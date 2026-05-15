@@ -1,0 +1,26 @@
+# Master source guide — kept locally only, not in the repo
+guide.txt
+
+# Hugo build output and caches
+public/
+resources/
+.hugo_build.lock
+
+# Hugo module cache (vendored on demand)
+/.hugo_cache/
+
+# Node (Hextra ships some optional npm assets; harmless to ignore)
+node_modules/
+package-lock.json
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Env / secrets
+.env
+.env.*
+!.env.example

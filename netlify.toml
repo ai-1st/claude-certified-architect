@@ -1,0 +1,31 @@
+# Netlify build config for the Hugo + Hextra site.
+# Match local Hugo (extended) and Go versions used to develop the site.
+
+[build]
+  command = "hugo mod get github.com/imfing/hextra@latest && hugo --gc --minify"
+  publish = "public"
+
+[build.environment]
+  HUGO_VERSION    = "0.150.1"
+  HUGO_ENV        = "production"
+  HUGO_ENABLEGITINFO = "true"
+  GO_VERSION      = "1.22.5"
+  TZ              = "UTC"
+  NODE_VERSION    = "20"
+
+[context.production.environment]
+  HUGO_ENV = "production"
+
+[context.deploy-preview]
+  command = "hugo mod get github.com/imfing/hextra@latest && hugo --gc --minify -b $DEPLOY_PRIME_URL"
+
+[context.branch-deploy]
+  command = "hugo mod get github.com/imfing/hextra@latest && hugo --gc --minify -b $DEPLOY_PRIME_URL"
+
+# Sane defaults for a static docs site
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options       = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

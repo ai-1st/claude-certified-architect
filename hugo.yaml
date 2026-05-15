@@ -1,0 +1,111 @@
+# Hugo + Hextra config
+# Docs: https://imfing.github.io/hextra/docs/
+
+baseURL: "https://claude-certified-architect.netlify.app/"
+title: "Claude Certified Architect — Foundations Prep"
+languageCode: "en-us"
+
+enableRobotsTXT: true
+enableGitInfo: true
+enableEmoji: false
+hasCJKLanguage: false
+
+# Pretty URLs
+pluralizeListTitles: false
+disablePathToLower: true
+
+# Site search via FlexSearch (Hextra default)
+outputs:
+  home: [HTML]
+  page: [HTML]
+  section: [HTML, RSS]
+
+# Pull Hextra as a Hugo module and mount the existing sections/ folder
+# into Hugo's content tree at /docs/ — single source of truth, no copying.
+module:
+  hugoVersion:
+    extended: true
+    min: "0.146.0"
+  imports:
+    - path: github.com/imfing/hextra
+  mounts:
+    - source: content
+      target: content
+    - source: sections
+      target: content/docs
+    - source: static
+      target: static
+    - source: assets
+      target: assets
+
+# Markup / syntax highlighting
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+    style: github
+
+# Sidebar / nav
+menu:
+  main:
+    - name: Study sections
+      pageRef: /docs
+      weight: 1
+    - name: About
+      pageRef: /about
+      weight: 2
+    - name: GitHub
+      url: https://github.com/ai-1st/claude-certified-architect
+      weight: 3
+      params:
+        icon: github
+
+# Hextra-specific params
+params:
+  description: >
+    Practice for the Claude Certified Architect — Foundations exam.
+    Claude itself runs your mock exam, one section at a time.
+
+  navbar:
+    displayTitle: true
+    displayLogo: false
+
+  theme:
+    default: system
+    displayToggle: true
+
+  footer:
+    enable: true
+    displayCopyright: true
+    displayPoweredBy: false
+    width: normal
+
+  # Edit-this-page links point back to the GitHub source
+  editURL:
+    enable: true
+    base: "https://github.com/ai-1st/claude-certified-architect/edit/main"
+
+  page:
+    width: normal
+
+  toc:
+    displayTags: true
+
+  # Show breadcrumb on docs pages
+  displayUpdatedDate: true
+  dateFormat: "January 2, 2006"
+
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+      tokenize: forward
+
+# Footer copyright (rendered by Hextra)
+copyright: >
+  © 2026 Dmitry Degtyarev · MIT License · Unofficial. Not affiliated with Anthropic.
+  Contact: <a href="mailto:ddegtyarev@gmail.com">ddegtyarev@gmail.com</a> ·
+  <a href="https://linkedin.com/in/mitek">linkedin.com/in/mitek</a>
