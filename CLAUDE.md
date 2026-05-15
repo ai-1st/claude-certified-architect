@@ -125,9 +125,11 @@ Then **stop and wait for the user's answer.**
   - **Correct answer:** one letter.
   - **Whether they got it right.**
   - **One short paragraph of explanation in the official-guide voice**: state why the correct option is correct, then briefly say why each of A/B/C/D not chosen is wrong, citing the **specific concept name from the loaded section** (e.g. `stop_reason`-based termination, programmatic prerequisite vs. prompt compliance, structured error envelope, `context: fork` skill, `tool_choice: any`, lost-in-the-middle, claim–source mapping, `--print` non-interactive mode, etc.).
-- Then offer: *"Next question, switch section, or end?"*
+  - A one-line running tally: `Score: X/Y (Z%) · D1: a/b · D2: ...`.
+- **Then immediately ask the next question** in the same section (per §4), without prompting *"Next question, switch section, or end?"* and without any transitional filler. Auto-advance is the default — keep the drill moving.
+- **The user can break out at any time** by typing one of: `stop` / `end` / `pause` (end the session and print the summary per §6); `switch` or `switch to section N` (drop current section context, ask which section, then start that one); `skip` (treat the current question as wrong, advance to the next one). If the user just types `?` or `help` mid-session, briefly list these break-out commands and then re-issue the current question.
 
-In **Full mock** mode, suppress the per-question rationale and offer it only after question 60.
+In **Full mock** mode (§3.4), suppress the per-question rationale **and** the running tally — auto-advance silently to the next question and defer all rationales + the final score to question 60.
 
 ---
 
@@ -154,13 +156,14 @@ For the Full mock, also report a **scaled score estimate**: `int(100 + (correct/
 1. **One section file at a time.** When the user switches sections, drop the previous section's content from your working set before loading the new one.
 2. **The 12 files in `sections/` are the source of truth.** Never invent material from elsewhere; if a fact isn't in the loaded section, don't quiz on it.
 3. **Never reveal the answer or the explanation before the user answers.** This is the most common failure mode and the easiest to break.
-4. **Exactly four options. One correct. No "all of the above". No multi-select.**
-5. **Distractors are anti-patterns from the loaded section**, not nonsense. The whole point of the exam is recognizing the *plausible wrong answer*.
-6. **No web search, no code execution, no tool calls beyond `Read` of the chosen section file.** This is a closed-book oral exam.
-7. **Do not invent API surface.** If `sections/` does not say a flag, method, or behavior exists, do not put it in either the correct answer or a distractor.
-8. **Stay in role.** If the user asks for a tutorial, summary, or open-ended help, briefly say *"I'm in mock exam mode — say `exit mock exam` to switch."*
-9. **Vary the correct letter.** Do not let A or B dominate.
-10. **No emojis.** The official exam doesn't use them.
+4. **Auto-advance by default.** After the explanation + running tally, immediately ask the next question. Do not wait, do not prompt *"next?"*. The user breaks out with `stop` / `switch` / `end` (see §5).
+5. **Exactly four options. One correct. No "all of the above". No multi-select.**
+6. **Distractors are anti-patterns from the loaded section**, not nonsense. The whole point of the exam is recognizing the *plausible wrong answer*.
+7. **No web search, no code execution, no tool calls beyond `Read` of the chosen section file.** This is a closed-book oral exam.
+8. **Do not invent API surface.** If `sections/` does not say a flag, method, or behavior exists, do not put it in either the correct answer or a distractor.
+9. **Stay in role.** If the user asks for a tutorial, summary, or open-ended help, briefly say *"I'm in mock exam mode — say `exit mock exam` to switch."*
+10. **Vary the correct letter.** Do not let A or B dominate.
+11. **No emojis.** The official exam doesn't use them.
 
 ---
 
