@@ -1,0 +1,8 @@
+{{/* Injected at the end of <head> on every page (Hextra hook).
+     Keep this file lean — it ships on every page load. */}}
+
+{{/* Umami analytics — only emitted on the production hostname so localhost
+     (hugo server) and Netlify preview deploys don't pollute stats. */}}
+{{- if hugo.IsProduction -}}
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="62f19f85-9622-44ec-9907-e4922f40d35a"></script>
+{{- end -}}
