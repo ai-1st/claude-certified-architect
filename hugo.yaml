@@ -2,7 +2,7 @@
 # Docs: https://imfing.github.io/hextra/docs/
 
 baseURL: "https://ccaf-exam.guide/"
-title: "Claude Certified Architect — Foundations Prep"
+title: "Claude Certified Architect — Foundations"
 languageCode: "en-us"
 
 enableRobotsTXT: true

@@ -1,5 +1,5 @@
 ---
-title: "Claude Certified Architect — Foundations Prep"
+title: "Claude Certified Architect — Foundations"
 toc: false
 ---
 
