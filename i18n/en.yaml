@@ -1,0 +1,11 @@
+# Local i18n overrides. Hextra reads the footer "© ..." line from the
+# `copyright` translation key (see Hextra's layouts/_partials/footer.html
+# and i18n/en.yaml). Defining it here overrides Hextra's default
+# "© 2026 Hextra Project." with our own MIT-licensed credit line.
+
+copyright: >
+  © 2026 Dmitry Degtyarev · MIT License · Unofficial · Not affiliated with Anthropic ·
+  [ddegtyarev@gmail.com](mailto:ddegtyarev@gmail.com) ·
+  [+7 702 730 6962 (WhatsApp)](https://wa.me/77027306962) ·
+  [linkedin.com/in/mitek](https://linkedin.com/in/mitek) ·
+  [GitHub](https://github.com/ai-1st/claude-certified-architect)

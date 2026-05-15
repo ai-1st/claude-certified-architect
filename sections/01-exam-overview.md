@@ -101,7 +101,7 @@ The clearest contrast: AWS AI Practitioner and GCP Generative AI Leader test **b
 
 ## Recommended preparation path
 
-1. **Read the official guide end-to-end** at `/Users/xo/claude-certified-architect/guide.txt`, then re-read the task statements per domain.
+1. **Skim the 12 study sections in order**, paying extra attention to the task statements quoted at the top of each section — they are the per-domain learning objectives drawn straight from the official exam guide.
 2. **Complete the free Anthropic Academy courses on Skilljar** in this order: Claude 101 → Building with the Claude API → Introduction to MCP → MCP Advanced Topics → Claude Code in Action → Introduction to agent skills → Introduction to subagents.
 3. **Build one Agent SDK project from scratch** that exercises a full agentic loop: tool calling, `stop_reason` handling, subagent delegation, lifecycle hooks, and error/retry policy.
 4. **Configure Claude Code for a real repo**: layered `CLAUDE.md`, `.claude/rules/` path-specific rules, at least one custom slash command, one skill with `context: fork` and `allowed-tools`, and one MCP server integration.

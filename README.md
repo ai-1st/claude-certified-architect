@@ -1,10 +1,12 @@
 # Claude Certified Architect — Foundations Prep
 
+> **Live site:** [ccaf-exam.guide](https://ccaf-exam.guide/)
+
 A practice repo for the **Claude Certified Architect — Foundations (CCA-F)** exam.
 
 The repo turns Claude itself into your **proctor and question-writer**. Open the repo in [Claude Code](https://docs.claude.com/en/docs/claude-code) (or any Claude session that respects `CLAUDE.md`), say *"start a mock exam"*, and Claude will quiz you in the same scenario-based, four-option multiple-choice format used on the real exam — one section at a time, so a single round stays inside Claude's context window.
 
-The same study material that powers the mock exam is published as a static website (Hugo + Hextra), suitable for Netlify hosting.
+The same study material that powers the mock exam is published at [ccaf-exam.guide](https://ccaf-exam.guide/) as a Hugo + Hextra static site.
 
 ## How it works
 
@@ -72,7 +74,7 @@ Then open <http://localhost:1313>.
 
 ### Deploy on Netlify
 
-The repo ships with `netlify.toml` configured for the Hextra build. In Netlify: **Add new site → Import an existing project → connect this repo** — defaults will pick up the build command and Hugo version automatically.
+The repo ships with `netlify.toml` configured for the Hextra build. In Netlify: **Add new site → Import an existing project → connect this repo** — defaults will pick up the build command and Hugo version automatically. The production deploy lives at [ccaf-exam.guide](https://ccaf-exam.guide/).
 
 ## Repo layout
 

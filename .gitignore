@@ -1,6 +1,3 @@
-# Master source guide — kept locally only, not in the repo
-guide.txt
-
 # Hugo build output and caches
 public/
 resources/
@@ -19,6 +16,10 @@ package-lock.json
 .vscode/
 *.swp
 *~
+
+# Cursor / Claude Code agent worktrees and local agent scratch
+.claude/worktrees/
+.cursor/
 
 # Env / secrets
 .env

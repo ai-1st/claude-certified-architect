@@ -1,7 +1,7 @@
 # Hugo + Hextra config
 # Docs: https://imfing.github.io/hextra/docs/
 
-baseURL: "https://claude-certified-architect.netlify.app/"
+baseURL: "https://ccaf-exam.guide/"
 title: "Claude Certified Architect — Foundations Prep"
 languageCode: "en-us"
 
@@ -82,7 +82,11 @@ params:
     displayPoweredBy: false
     width: normal
 
-  # Edit-this-page links point back to the GitHub source
+  # Edit-this-page links point back to the GitHub source.
+  # Path computation is overridden in layouts/_partials/toc.html because
+  # the default uses BaseDir/SourceRoot/.Path, which produces the wrong
+  # URL when the mount source name (sections/) differs from the post-mount
+  # target path (content/docs/).
   editURL:
     enable: true
     base: "https://github.com/ai-1st/claude-certified-architect/edit/main"
@@ -104,8 +108,5 @@ params:
       index: content
       tokenize: forward
 
-# Footer copyright (rendered by Hextra)
-copyright: >
-  © 2026 Dmitry Degtyarev · MIT License · Unofficial. Not affiliated with Anthropic.
-  Contact: <a href="mailto:ddegtyarev@gmail.com">ddegtyarev@gmail.com</a> ·
-  <a href="https://linkedin.com/in/mitek">linkedin.com/in/mitek</a>
+# Footer copyright is overridden via the `copyright` i18n string in
+# i18n/en.yaml — Hextra reads it from there, not from a top-level config key.

@@ -29,8 +29,6 @@ Pass criterion: look at a workflow and immediately say "this is a hook problem, 
 
 `--resume <id-or-name>` continues a specific prior conversation; `--continue`/`-c` resumes the most recent in this `cwd`. `--fork-session` (`fork_session: true` / `forkSession: true` in the SDK) creates an independent branch from a shared baseline. After files change on disk, inform a resumed agent or its cached `Read` results are stale; a fresh session seeded with a hand-crafted summary is sometimes more reliable than resuming with stale tool results.
 
-Source: `guide.txt` lines 229–305.
-
 ## Hooks reference
 
 ### Hook event types

@@ -66,7 +66,7 @@ Reply with 1, 2, or 3 (or say "just quiz me" and I'll pick).
 
 1. List the 12 sections with their numbers and short titles (from the table above).
 2. Ask: *"Which section? (number, or section name)"*.
-3. **Read only that one file** with the Read tool: `sections/NN-*.md`. Do not read `guide.txt`, do not read other sections, do not search the web.
+3. **Read only that one file** with the Read tool: `sections/NN-*.md`. Do not read other sections, do not search the web.
 4. Begin asking questions per §4 below.
 
 ### 3.3 If Scenario block (mode 2)
@@ -152,7 +152,7 @@ For the Full mock, also report a **scaled score estimate**: `int(100 + (correct/
 ## 7. Hard rules (non-negotiable)
 
 1. **One section file at a time.** When the user switches sections, drop the previous section's content from your working set before loading the new one.
-2. **Never read `guide.txt`** unless the user explicitly asks ("re-read the master guide"). It is excluded from the repo by default; the section files are the source of truth.
+2. **The 12 files in `sections/` are the source of truth.** Never invent material from elsewhere; if a fact isn't in the loaded section, don't quiz on it.
 3. **Never reveal the answer or the explanation before the user answers.** This is the most common failure mode and the easiest to break.
 4. **Exactly four options. One correct. No "all of the above". No multi-select.**
 5. **Distractors are anti-patterns from the loaded section**, not nonsense. The whole point of the exam is recognizing the *plausible wrong answer*.
