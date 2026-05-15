@@ -100,5 +100,4 @@ MIT — see [`LICENSE`](./LICENSE).
 
 ## Author
 
-**Dmitry Degtyarev**
-[ddegtyarev@gmail.com](mailto:ddegtyarev@gmail.com) · +7 702 730 6962 (WhatsApp) · [linkedin.com/in/mitek](https://linkedin.com/in/mitek)
+**Dmitry Degtyarev** · [linkedin.com/in/mitek](https://linkedin.com/in/mitek)

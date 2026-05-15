@@ -18,8 +18,6 @@ The repo and site are open source under the **MIT License**. Pull requests, corr
 
 **Dmitry Degtyarev**
 
-- Email: [ddegtyarev@gmail.com](mailto:ddegtyarev@gmail.com)
-- WhatsApp: [+7 702 730 6962](https://wa.me/77027306962)
 - LinkedIn: [linkedin.com/in/mitek](https://linkedin.com/in/mitek)
 
 ## Acknowledgements
