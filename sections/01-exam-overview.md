@@ -112,7 +112,6 @@ The clearest contrast: AWS AI Practitioner and GCP Generative AI Leader test **b
 
 ## References
 
-- [Claude Certified Architect — Foundations Exam Guide (claudecertifiedarchitect.net)](https://claudecertifiedarchitect.net/) — Community-maintained summary of the official exam guide, scoring, and access path.
 - [Anthropic Academy on Skilljar](https://anthropic.skilljar.com/) — Free preparation courses (Claude 101, Building with the Claude API, MCP, Claude Code, agent skills, subagents).
 - [Anthropic Learn — Courses index](https://www.anthropic.com/learn/courses) — Anthropic's official catalog of training courses.
 - [Claude Certified Architect: How to Get Certified in 2026 (lowcode.agency)](https://www.lowcode.agency/blog/how-to-become-claude-certified-architect) — Reported launch date, format, cost, and access path.
