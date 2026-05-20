@@ -1,0 +1,10 @@
+# Remplacements i18n locaux. Hextra lit la ligne de pied de page "© ..." depuis
+# la clé de traduction `copyright`; ici nous remplaçons la chaîne Hextra par défaut.
+
+copyright: >
+  © 2026 Dmitry Degtyarev · Licence MIT · Non officiel · Non affilié à Anthropic ·
+  [linkedin.com/in/mitek](https://linkedin.com/in/mitek) ·
+  [GitHub](https://github.com/ai-1st/claude-certified-architect)
+
+studySections: "Sections d'étude"
+about: "À propos"

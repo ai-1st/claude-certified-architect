@@ -4,6 +4,25 @@
 baseURL: "https://ccaf-exam.guide/"
 title: "Claude Certified Architect — Foundations"
 languageCode: "en-us"
+defaultContentLanguage: en
+
+languages:
+  en:
+    languageName: English
+    languageCode: en-us
+    weight: 1
+  es:
+    languageName: Español
+    languageCode: es
+    weight: 2
+  fr:
+    languageName: Français
+    languageCode: fr
+    weight: 3
+  ru:
+    languageName: Русский
+    languageCode: ru
+    weight: 4
 
 enableRobotsTXT: true
 enableGitInfo: true
@@ -50,13 +69,16 @@ markup:
 # Sidebar / nav
 menu:
   main:
-    - name: Study sections
+    - identifier: studySections
+      name: Study sections
       pageRef: /docs
       weight: 1
-    - name: About
+    - identifier: about
+      name: About
       pageRef: /about
       weight: 2
-    - name: GitHub
+    - identifier: github
+      name: GitHub
       url: https://github.com/ai-1st/claude-certified-architect
       weight: 3
       params:

@@ -1,0 +1,10 @@
+# Локальные переопределения i18n. Hextra читает строку футера "© ..." из
+# ключа перевода `copyright`; здесь мы переопределяем стандартную строку Hextra.
+
+copyright: >
+  © 2026 Dmitry Degtyarev · Лицензия MIT · Неофициально · Не связано с Anthropic ·
+  [linkedin.com/in/mitek](https://linkedin.com/in/mitek) ·
+  [GitHub](https://github.com/ai-1st/claude-certified-architect)
+
+studySections: "Учебные разделы"
+about: "О проекте"
