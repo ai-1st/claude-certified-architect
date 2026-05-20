@@ -23,6 +23,14 @@ toc: false
 &nbsp;
 {{< hextra/hero-button text="Открыть на GitHub" link="https://github.com/ai-1st/claude-certified-architect" style="background: linear-gradient(90deg, #555 0%, #333 100%);" >}}
 
+<div class="hx:mt-8 hx:flex hx:flex-wrap hx:items-center hx:justify-center hx:gap-2">
+  <span class="hx:text-sm hx:font-semibold hx:opacity-70 hx:mr-2">Читать руководство на:</span>
+  <a href="/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">English</a>
+  <a href="/es/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">Español</a>
+  <a href="/fr/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">Français</a>
+  <a href="/ru/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:bg-primary-600 hx:text-white hx:font-medium hx:no-underline hx:transition hx:hover:opacity-90">Русский</a>
+</div>
+
 <div class="hx:mt-6"></div>
 
 ## Что это за репозиторий
