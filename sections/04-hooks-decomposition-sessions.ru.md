@@ -1,60 +1,60 @@
 ---
-title: "Раздел 4 — Agent SDK Hooks, Task Decomposition и Session Management"
+title: "Раздел 4 — Хуки Agent SDK, декомпозиция задач и управление сессиями"
 linkTitle: "4. Hooks, Decomposition & Sessions"
 weight: 4
-description: "Domains 1.5–1.7 — PostToolUse и call-interception hooks, prompt chaining vs adaptive decomposition, fork_session и resume named-session."
+description: "Domains 1.5–1.7 — хуки PostToolUse и перехват вызовов, последовательность промптов vs адаптивная декомпозиция, fork_session и возобновление именованной сессии."
 ---
 
 ## Что покрывает этот раздел
 
-Три тесно связанные architect-level skills, которые превращают Claude agent из probabilistic chatbot в контролируемую, debuggable system:
+Три тесно связанных навыка уровня архитектора, которые превращают агента Claude из вероятностного чат-бота в управляемую, отладочную систему:
 
-1. **Hooks (1.5)** — deterministic Python/TypeScript callbacks (or shell scripts), которые intercept agent loop в well-defined lifecycle points, чтобы enforce policy, normalize tool output и audit every action.
-2. **Task decomposition (1.6)** — понимание, когда hard-wire sequential pipeline (prompt chaining), а когда дать model dynamically generate own subtasks (orchestrator-workers / adaptive plans).
-3. **Session management (1.7)** — operational discipline of `--continue`, `--resume` и `--fork-session`, плюс judgment of *when* to throw a session away and start fresh with a structured summary.
+1. **Хуки (1.5)** — детерминированные коллбэки на Python/TypeScript (или shell-скрипты), которые перехватывают агентный цикл в чётко определённых точках жизненного цикла, чтобы обеспечивать соблюдение политик, нормализовать вывод инструментов и аудировать каждое действие.
+2. **Декомпозиция задач (1.6)** — понимание, когда жёстко прошивать последовательный конвейер (последовательность промптов), а когда позволить модели динамически порождать собственные подзадачи (оркестратор–воркеры / адаптивные планы).
+3. **Управление сессиями (1.7)** — операционная дисциплина `--continue`, `--resume` и `--fork-session`, плюс умение оценить, *когда* выбросить сессию и начать заново со структурированной сводкой.
 
-Pass criterion: посмотреть на workflow и сразу сказать "это hook problem, not prompt problem", "это prompt chaining, not orchestrator-workers" или "this session is stale, summarize and restart."
+Критерий прохождения: посмотреть на рабочий процесс и сразу сказать «это задача для хука, а не для промпта», «это последовательность промптов, а не оркестратор–воркеры» или «эта сессия устарела, нужна сводка и перезапуск».
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 1.5 Hooks for interception & normalization
+### 1.5 Хуки для перехвата и нормализации
 
-`PostToolUse` intercepts tool *results* and transforms them before model sees raw bytes. `PreToolUse` intercepts tool *calls* and can block, modify, or redirect — canonical example: "block any refund where `amount > 500` and route to human escalation." Hooks дают **deterministic guarantees**; prompts дают только **probabilistic compliance**. Skills: normalize heterogeneous timestamps across MCP servers; block policy-violating actions and redirect to alternatives; choose hooks over prompts when compliance must be guaranteed.
+`PostToolUse` перехватывает *результаты* инструментов и преобразует их до того, как модель увидит сырые байты. `PreToolUse` перехватывает *вызовы* инструментов и может блокировать, изменять или перенаправлять — канонический пример: «блокировать любой возврат, где `amount > 500`, и направлять на человеческую эскалацию». Хуки дают **детерминированные гарантии**; промпты — только **вероятностное соблюдение**. Навыки: нормализовать разнородные временные метки от разных MCP-серверов; блокировать действия, нарушающие политику, и перенаправлять на альтернативы; выбирать хуки вместо промптов, когда соблюдение должно быть гарантировано.
 
-### 1.6 Task decomposition strategies
+### 1.6 Стратегии декомпозиции задач
 
-**Prompt chaining** для predictable workflows, где steps known in advance, vs. **dynamic adaptive decomposition** для open-ended workflows, где subtasks can only be discovered at runtime. Large code reviews: per-file local analysis + separate cross-file integration pass to avoid attention dilution.
+**Последовательность промптов** для предсказуемых процессов, где шаги известны заранее, vs **динамическая адаптивная декомпозиция** для открытых процессов, где подзадачи можно обнаружить только во время выполнения. Большие ревью кода: пофайловый локальный анализ + отдельный кросс-файловый интеграционный проход, чтобы избежать размывания внимания.
 
-### 1.7 Session state, resumption & forking
+### 1.7 Состояние сессии, возобновление и форк
 
-`--resume <id-or-name>` continues a specific prior conversation; `--continue`/`-c` resumes the most recent in this `cwd`. `--fork-session` (`fork_session: true` / `forkSession: true` in SDK) creates an independent branch from a shared baseline. После file changes on disk inform resumed agent or its cached `Read` results are stale; fresh session seeded with hand-crafted summary иногда reliable than resuming with stale tool results.
+`--resume <id-or-name>` продолжает конкретный прежний диалог; `--continue`/`-c` возобновляет самый свежий в текущем `cwd`. `--fork-session` (`fork_session: true` / `forkSession: true` в SDK) создаёт независимую ветку от общей базовой точки. После изменений в файлах на диске нужно сообщить возобновлённому агенту, иначе кэшированные результаты `Read` устареют; свежая сессия, засеянная вручную написанной сводкой, иногда надёжнее возобновления со старыми результатами инструментов.
 
-## Hooks reference
+## Справочник по хукам
 
-### Hook event types
+### Типы событий хуков
 
-| Event | When it fires | Typical use |
+| Событие | Когда срабатывает | Типичное применение |
 | --- | --- | --- |
-| `SessionStart` | Session begins or resumes (matchers: `startup`, `resume`, `clear`, `compact`) | Init logging, inject project rules |
-| `SessionEnd` | Session terminates | Flush logs, clean up |
-| `UserPromptSubmit` | User submits a prompt, before model sees it | Inject context, scrub PII, block off-topic prompts |
-| `PreToolUse` | Before any tool call executes | **Policy enforcement**, input rewriting, sandbox redirection |
-| `PostToolUse` | After a tool call succeeds | **Data normalization**, audit logging, format conversion |
-| `PostToolUseFailure` | After a tool call fails | Custom error handling |
-| `PostToolBatch` | A parallel batch of tool calls resolves | Inject conventions once per batch |
-| `PermissionRequest` / `PermissionDenied` | Permission dialog or auto-mode denial | Custom UX, retry decisions |
-| `SubagentStart` / `SubagentStop` | Subagent spawns / finishes | Track parallel work, aggregate results |
-| `PreCompact` / `PostCompact` | Conversation compaction lifecycle | Archive transcript before lossy summary |
-| `Notification` | Agent emits a notification | Forward to Slack/PagerDuty |
-| `Stop` / `StopFailure` | Turn ends normally / via API error | Save state, alert on rate-limit |
-| `TaskCreated` / `TaskCompleted` | Task lifecycle | Enforce ticket-ID conventions, gate on tests passing |
-| `InstructionsLoaded`, `ConfigChange`, `CwdChanged`, `FileChanged`, `WorktreeCreate/Remove`, `Setup` | Misc lifecycle | Audit, reload config, react to external changes |
+| `SessionStart` | Сессия начинается или возобновляется (matchers: `startup`, `resume`, `clear`, `compact`) | Инициализация логирования, внедрение правил проекта |
+| `SessionEnd` | Сессия завершается | Сброс логов, очистка |
+| `UserPromptSubmit` | Пользователь отправляет промпт, до того как модель его увидит | Внедрение контекста, очистка PII, блокировка не по теме |
+| `PreToolUse` | Перед выполнением любого вызова инструмента | **Принуждение политик**, переписывание ввода, перенаправление в песочницу |
+| `PostToolUse` | После успешного вызова инструмента | **Нормализация данных**, аудит-логирование, конвертация форматов |
+| `PostToolUseFailure` | После неуспешного вызова инструмента | Пользовательская обработка ошибок |
+| `PostToolBatch` | Параллельный батч вызовов инструментов разрешён | Внедрение соглашений один раз на батч |
+| `PermissionRequest` / `PermissionDenied` | Диалог разрешений или отказ в auto-режиме | Кастомный UX, решения о повторе |
+| `SubagentStart` / `SubagentStop` | Субагент запускается / завершается | Отслеживание параллельной работы, агрегация результатов |
+| `PreCompact` / `PostCompact` | Жизненный цикл уплотнения диалога | Архивирование транскрипта перед потерей данных при сводке |
+| `Notification` | Агент выдаёт уведомление | Пересылка в Slack/PagerDuty |
+| `Stop` / `StopFailure` | Ход завершается нормально / через ошибку API | Сохранение состояния, оповещение по rate-limit |
+| `TaskCreated` / `TaskCompleted` | Жизненный цикл задачи | Соблюдение соглашений по ID тикетов, гейт по прохождению тестов |
+| `InstructionsLoaded`, `ConfigChange`, `CwdChanged`, `FileChanged`, `WorktreeCreate/Remove`, `Setup` | Прочие события жизненного цикла | Аудит, перезагрузка конфига, реакция на внешние изменения |
 
-`SessionStart`/`SessionEnd` are TS-SDK callbacks only; in Python they must be shell hooks in `.claude/settings.json` plus `setting_sources=["project"]`.
+`SessionStart`/`SessionEnd` существуют как коллбэки только в TS SDK; в Python они должны быть shell-хуками в `.claude/settings.json` плюс `setting_sources=["project"]`.
 
-### Anatomy of a hook
+### Анатомия хука
 
-Два registration paths: **SDK callbacks** (`ClaudeAgentOptions.hooks` / `options.hooks`) или **shell-command hooks** in `.claude/settings.json` — child processes that get event JSON on stdin.
+Два пути регистрации: **коллбэки SDK** (`ClaudeAgentOptions.hooks` / `options.hooks`) или **shell-хуки команд** в `.claude/settings.json` — дочерние процессы, получающие JSON события на stdin.
 
 ```json
 {
@@ -83,19 +83,19 @@ Pass criterion: посмотреть на workflow и сразу сказать 
 }
 ```
 
-**Matchers**: `*`/`""`/omitted matches all; letters+digits+`|` is exact / pipe-list (`Edit|Write`); anything else is JS regex (`^mcp__memory__`). Tool hooks match on tool *name* only — filter `file_path` inside handler.
+**Matchers**: `*`/`""`/опущенный — совпадает со всем; буквы+цифры+`|` — точное совпадение или список через pipe (`Edit|Write`); всё остальное — JS-регулярное выражение (`^mcp__memory__`). Хуки на инструменты сопоставляются только по *имени* инструмента — фильтруйте `file_path` внутри обработчика.
 
-**Input** — every hook receives `session_id`, `cwd`, `hook_event_name` plus event-specific fields (`tool_name`, `tool_input`, `tool_response`, …). Subagent context adds `agent_id`, `agent_type`.
+**Ввод** — каждый хук получает `session_id`, `cwd`, `hook_event_name` плюс поля, специфичные для события (`tool_name`, `tool_input`, `tool_response`, …). Контекст субагента добавляет `agent_id`, `agent_type`.
 
-**Output** — JSON in two layers: top-level (`systemMessage`, `continue` / `continue_`, `additionalContext`) and `hookSpecificOutput` (event-dependent). For `PreToolUse`: `permissionDecision` ∈ `{"allow", "deny", "ask", "defer"}`, `permissionDecisionReason`, `updatedInput`. For `PostToolUse`: `additionalContext` (append) or `updatedToolOutput` (replace).
+**Вывод** — JSON в два слоя: верхний уровень (`systemMessage`, `continue` / `continue_`, `additionalContext`) и `hookSpecificOutput` (зависит от события). Для `PreToolUse`: `permissionDecision` ∈ `{"allow", "deny", "ask", "defer"}`, `permissionDecisionReason`, `updatedInput`. Для `PostToolUse`: `additionalContext` (добавить) или `updatedToolOutput` (заменить).
 
-**Shell-hook exit codes**: `0` = success, parse stdout as JSON; `2` = blocking error, stderr fed to model (for `PreToolUse` blocks the call); any other non-zero = non-blocking error.
+**Коды выхода shell-хука**: `0` = успех, парсить stdout как JSON; `2` = блокирующая ошибка, stderr передаётся модели (для `PreToolUse` блокирует вызов); любое другое ненулевое = неблокирующая ошибка.
 
-When multiple hooks fire on same event: **deny > defer > ask > allow** — a single `deny` blocks.
+Когда несколько хуков срабатывают на одном событии: **deny > defer > ask > allow** — один `deny` блокирует всё.
 
-### Concrete examples
+### Конкретные примеры
 
-**1. PostToolUse normalizing heterogeneous date formats** — три MCP servers возвращают Unix epoch seconds, ISO 8601 strings и numeric millisecond integers. Force one ISO 8601 representation before model has to reason about it.
+**1. PostToolUse, нормализующий разнородные форматы дат** — три MCP-сервера возвращают Unix epoch seconds, ISO 8601 строки и числовые миллисекунды. Принудительно приводим к одному представлению ISO 8601 до того, как модели придётся об этом рассуждать.
 
 ```python
 from datetime import datetime, timezone
@@ -127,9 +127,9 @@ options = ClaudeAgentOptions(
 )
 ```
 
-Model sees only ISO 8601, so cross-tool date arithmetic just works.
+Модель всегда видит только ISO 8601, поэтому арифметика дат между инструментами просто работает.
 
-**2. PreToolUse blocking high-value refunds** — guarantee that `process_refund` can never fire above $500.
+**2. PreToolUse, блокирующий возвраты на крупные суммы** — гарантируем, что `process_refund` никогда не сработает свыше $500.
 
 ```typescript
 import { HookCallback, PreToolUseHookInput } from "@anthropic-ai/claude-agent-sdk";
@@ -155,52 +155,52 @@ const refundGuard: HookCallback = async (input) => {
 };
 ```
 
-`permissionDecisionReason` — magic ingredient: tells model *why* call was blocked and what alternative tool to use, so agent self-corrects on next turn instead of looping on same denied call.
+`permissionDecisionReason` — волшебный ингредиент: он сообщает модели, *почему* вызов был заблокирован и каким альтернативным инструментом воспользоваться, поэтому агент самокорректируется на следующем ходу, а не зацикливается на том же отклонённом вызове.
 
-### When NOT to use a hook (use a prompt instead)
+### Когда НЕ использовать хук (использовать промпт)
 
-| Situation | Hook | Prompt |
+| Ситуация | Хук | Промпт |
 | --- | --- | --- |
-| Hard regulatory rule ("never log SSNs") | Yes | No |
-| Data shape contract ("always ISO 8601") | Yes | No |
-| Audit log of every tool call | Yes | No |
-| Per-call quota / cost cap | Yes (PreToolUse) | No |
-| Soft style preference ("prefer 2-space indent") | No | Yes |
-| Persona / tone ("be concise, no emojis") | No | Yes |
+| Жёсткое регуляторное правило («никогда не логировать SSN») | Да | Нет |
+| Контракт по форме данных («всегда ISO 8601») | Да | Нет |
+| Аудит-лог каждого вызова инструмента | Да | Нет |
+| Квота / потолок стоимости на вызов | Да (PreToolUse) | Нет |
+| Мягкое стилевое предпочтение («предпочитать отступ в 2 пробела») | Нет | Да |
+| Персона / тон («будь краток, без эмодзи») | Нет | Да |
 
-Rule of thumb: if violating it is a P0 incident, it goes in a hook.
+Правило большого пальца: если нарушение этого — инцидент уровня P0, оно живёт в хуке.
 
-## Decomposition patterns
+## Паттерны декомпозиции
 
-### Prompt chaining (sequential, predictable)
+### Последовательность промптов (sequential, predictable)
 
-Fixed N-step pipeline where step *k* feeds step *k+1*. Each LLM call does an easier task than a single mega-prompt would. From [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents): *"ideal for situations where the task can be easily and cleanly decomposed into fixed subtasks. The main goal is to trade off latency for higher accuracy, by making each LLM call an easier task."*
+Фиксированный N-шаговый конвейер, где шаг *k* подаёт данные в шаг *k+1*. Каждый вызов LLM решает более лёгкую задачу, чем один мега-промпт. Из [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents): *«идеально, когда задача легко и чисто декомпозируется на фиксированные подзадачи. Главная цель — обменять задержку на повышенную точность, делая каждый вызов LLM проще».*
 
-Add programmatic *gates* between steps to fail fast: outline → check rubric (gate) → write document; per-file lint analysis → cross-file integration review.
+Добавляйте программные *гейты* между шагами для быстрого отказа: набросок → проверка рубрики (гейт) → написание документа; пофайловый lint-анализ → кросс-файловое интеграционное ревью.
 
-### Dynamic adaptive decomposition
+### Динамическая адаптивная декомпозиция
 
-A.k.a. **orchestrator-workers**. Orchestrator LLM смотрит на input, decides what subtasks are needed (it could not have known in advance), spawns workers, and synthesizes results. *"Well-suited for complex tasks where you can't predict the subtasks needed (in coding, the number of files that need to be changed and the nature of the change in each file likely depend on the task)."*
+Также известная как **оркестратор–воркеры**. LLM-оркестратор смотрит на ввод, решает, какие подзадачи нужны (заранее это знать было невозможно), запускает воркеров и синтезирует результаты. *«Подходит для сложных задач, в которых нельзя предсказать необходимые подзадачи (в разработке количество файлов, требующих изменений, и характер изменений в каждом, как правило, зависят от задачи)».*
 
-In Agent SDK this maps to the `Task` / subagent pattern, optionally tracked via `SubagentStart`/`SubagentStop` hooks.
+В Agent SDK это отображается на паттерн `Task` / субагент, опционально отслеживаемый хуками `SubagentStart`/`SubagentStop`.
 
-### Decision matrix
+### Матрица решений
 
-| Workflow shape | Pattern |
+| Форма рабочего процесса | Паттерн |
 | --- | --- |
-| Steps known in advance, identical for every input | Prompt chaining |
-| Independent subtasks of *known* shape | Parallelization (sectioning) |
-| Same task, want N votes for confidence | Parallelization (voting) |
-| Distinct categories, each with a specialist | Routing |
-| Subtask count/shape depends on input | Orchestrator-workers (adaptive) |
-| Output benefits from critique loop | Evaluator-optimizer |
-| Open-ended, multi-turn, unknown horizon | Full agent loop |
+| Шаги известны заранее, одинаковы для каждого входа | Последовательность промптов |
+| Независимые подзадачи *известной* формы | Параллелизация (sectioning) |
+| Одна задача, нужно N голосов для уверенности | Параллелизация (voting) |
+| Различимые категории, каждая со своим специалистом | Маршрутизация |
+| Число/форма подзадач зависят от ввода | Оркестратор–воркеры (адаптивно) |
+| Выход выигрывает от цикла критики | Оценщик–оптимизатор |
+| Открытый, многошаговый, с неизвестным горизонтом | Полный агентный цикл |
 
-### Worked example — per-file + cross-file code review
+### Разобранный пример — пофайловое + кросс-файловое ревью кода
 
-A 40-file PR jammed into one prompt suffers attention dilution: model skims and misses bugs. Decompose:
+PR из 40 файлов, втиснутый в один промпт, страдает от размывания внимания: модель пробегает поверх и пропускает баги. Декомпозируем:
 
-**Phase 1 — per-file local analysis (chained, parallelizable)**: each file gets its own context, forked from a shared baseline session that has already loaded `CLAUDE.md`, PR description and diff stat. Forking avoids re-paying tokens to re-establish context per file.
+**Фаза 1 — пофайловый локальный анализ (цепочка, параллелизуется)**: каждый файл получает свой контекст, ответвлённый от общей базовой сессии, в которую уже загружены `CLAUDE.md`, описание PR и diff-stat. Форк избавляет от повторной оплаты токенов на восстановление контекста на каждом файле.
 
 ```python
 async def review_file(path: str, baseline_sid: str) -> dict:
@@ -218,7 +218,7 @@ async def review_file(path: str, baseline_sid: str) -> dict:
             return json.loads(msg.result)
 ```
 
-**Phase 2 — cross-file integration pass (single call):**
+**Фаза 2 — кросс-файловый интеграционный проход (один вызов):**
 
 ```python
 findings = await asyncio.gather(*(review_file(p, baseline_sid) for p in changed_files))
@@ -231,28 +231,28 @@ async for msg in query(
     ...
 ```
 
-Prompt chaining (Phase 1 → Phase 2) layered on top of parallelization within Phase 1.
+Последовательность промптов (Фаза 1 → Фаза 2), наложенная поверх параллелизации внутри Фазы 1.
 
-**Open-ended variant — "add tests to a legacy codebase":** *adaptive*, not chained. Map structure → identify high-impact untested modules → build prioritized backlog → take top item, write tests, discover hidden dependency, push it back onto backlog, repeat. Step 4..N knowable only at runtime — orchestrator-workers, not chaining.
+**Открытый вариант — «добавить тесты в legacy-кодовую базу»**: *адаптивный*, не цепочечный. Картографирование структуры → выявление модулей высокого влияния без тестов → построение приоритизированного бэклога → берём верхний элемент, пишем тесты, обнаруживаем скрытую зависимость, кладём её обратно в бэклог, повторяем. Шаги 4..N узнаваемы только во время выполнения — это оркестратор–воркеры, а не цепочка.
 
-## Session management
+## Управление сессиями
 
-### `--resume` vs `--continue` vs new session
+### `--resume` vs `--continue` vs новая сессия
 
-| Need | Use | How it finds the session |
+| Что нужно | Что использовать | Как находит сессию |
 | --- | --- | --- |
-| Most recent session in this directory | `claude -c` / `continue: true` | Newest in `~/.claude/projects/<cwd-slug>/` |
-| Specific named or ID'd session | `claude -r "auth-refactor"` / `resume: "<id>"` | Exact ID or `--name` lookup |
-| Brand-new conversation | `claude` | Fresh session ID |
-| One-shot, no disk persistence (TS only) | `persistSession: false` | In-memory only |
+| Самая свежая сессия в этом каталоге | `claude -c` / `continue: true` | Самая новая в `~/.claude/projects/<cwd-slug>/` |
+| Конкретная именованная или ID-сессия | `claude -r "auth-refactor"` / `resume: "<id>"` | Точный ID или поиск по `--name` |
+| Совершенно новый диалог | `claude` | Свежий ID сессии |
+| Одноразовый запуск без записи на диск (только TS) | `persistSession: false` | Только в памяти |
 
-Sessions live at `~/.claude/projects/<slugified-cwd>/<session-id>.jsonl`, where slug is absolute working directory with every non-alphanumeric char replaced by `-`. **A different `cwd` means `resume` cannot find the file** — #1 cause of "why is resume returning a fresh session."
+Сессии живут в `~/.claude/projects/<slugified-cwd>/<session-id>.jsonl`, где slug — это абсолютный рабочий каталог, в котором каждый небуквенно-цифровой символ заменён на `-`. **Другой `cwd` означает, что `resume` не найдёт файл** — причина №1 «почему resume возвращает свежую сессию».
 
-Capture session ID from `ResultMessage` (Python) / `SDKResultMessage` (TS) on every run if you intend to resume programmatically. In TS it's also on init `SystemMessage`.
+Фиксируйте ID сессии из `ResultMessage` (Python) / `SDKResultMessage` (TS) при каждом запуске, если планируете возобновлять программно. В TS он также есть в инициализирующем `SystemMessage`.
 
-### `fork_session`: when and how
+### `fork_session`: когда и как
 
-Forking copies existing transcript into a *new* session ID and lets it diverge. Original is untouched.
+Форк копирует существующий транскрипт в *новый* ID сессии и позволяет ей расходиться. Оригинал не трогается.
 
 ```python
 forked_id = None
@@ -275,13 +275,13 @@ for await (const message of query({
 }
 ```
 
-Use cases: A/B compare two refactoring approaches from shared baseline; testing-strategy bake-off; risky exploration with guaranteed fall-back to parent.
+Случаи использования: A/B-сравнение двух подходов к рефакторингу из общей базовой точки; bake-off стратегий тестирования; рискованное исследование с гарантированным откатом к родителю.
 
-Caveat: forking branches the *conversation*, not the *filesystem*. If both forks edit files in same repo, edits collide. Combine with [file checkpointing](https://code.claude.com/docs/en/agent-sdk/file-checkpointing) or git worktrees (`claude -w <name>`) for true isolation.
+Оговорка: форк ветвит *диалог*, а не *файловую систему*. Если обе ветки правят файлы в одном репозитории, эти правки сталкиваются. Комбинируйте с [file checkpointing](https://code.claude.com/docs/en/agent-sdk/file-checkpointing) или git worktrees (`claude -w <name>`) для настоящей изоляции.
 
-### Stale-context decision tree
+### Дерево решений для устаревшего контекста
 
-After a code change, before resuming an investigation:
+После изменения кода, прежде чем возобновлять расследование:
 
 ```
 Did the agent's last tool calls touch files that have since been edited?
@@ -295,29 +295,29 @@ Did the agent's last tool calls touch files that have since been edited?
               state of the code, (d) open questions.
 ```
 
-Clean session with curated summary often beats resume because resumed transcript still contains stale `Read` outputs the model trusts — it may "remember" function signatures that no longer exist and hallucinate calls. Pattern: keep a long-lived **named session** (`claude -n design-review`) for stable architectural context and **fork** it per investigation. Throw away the forks.
+Чистая сессия с тщательно подобранной сводкой часто превосходит возобновление, потому что в возобновлённом транскрипте всё ещё содержатся устаревшие результаты `Read`, которым модель доверяет — она может «помнить» сигнатуры функций, которых больше нет, и галлюцинировать вызовы. Паттерн: держите долгоживущую **именованную сессию** (`claude -n design-review`) для устойчивого архитектурного контекста и **ответвляйте** её на каждое расследование. Форки выбрасывайте.
 
-## Exam-style focus points
+## Экзаменационные акценты
 
-- **Hooks are deterministic; prompts are probabilistic.** Any rule that must hold 100% of the time goes in `PreToolUse` (outgoing) or `PostToolUse` (incoming).
-- Memorize `permissionDecision` values: `allow`, `deny`, `ask`, `defer`. Memorize priority: **deny > defer > ask > allow**.
-- `PostToolUse.updatedToolOutput` *replaces* what model sees; `additionalContext` *appends*. `PreToolUse.updatedInput` rewrites tool input — but only if you also return `permissionDecision: "allow"`.
-- Shell-hook exit codes: `0` = parse JSON; `2` = block (PreToolUse) / feed stderr to model; anything else = non-blocking error.
-- Decomposition picker: known-shape → prompt chaining; unknown-shape → orchestrator-workers. Big code review = per-file pass + cross-file integration pass.
-- `--continue` needs no ID but only finds most recent session in current `cwd`. `--resume` needs ID or `--name`. `--fork-session` requires `--resume`/`--continue` and yields new ID.
-- Session storage: `~/.claude/projects/<slugified-cwd>/<session-id>.jsonl`. Wrong `cwd` is #1 reason resume silently returns fresh session.
-- Stale tool results in resumed session can hurt more than help — sometimes fresh session with curated summary outperforms resume.
-- Fork to compare; resume to continue; restart-with-summary when context has rotted.
+- **Хуки детерминированы; промпты вероятностны.** Любое правило, которое должно соблюдаться на 100%, живёт в `PreToolUse` (исходящий поток) или `PostToolUse` (входящий поток).
+- Запомните значения `permissionDecision`: `allow`, `deny`, `ask`, `defer`. Запомните приоритет: **deny > defer > ask > allow**.
+- `PostToolUse.updatedToolOutput` *заменяет* то, что видит модель; `additionalContext` *добавляет*. `PreToolUse.updatedInput` переписывает ввод инструмента — но только если вы также возвращаете `permissionDecision: "allow"`.
+- Коды выхода shell-хука: `0` = парсить JSON; `2` = блокировать (PreToolUse) / передать stderr модели; всё остальное = неблокирующая ошибка.
+- Выбор декомпозиции: форма известна → последовательность промптов; форма неизвестна → оркестратор–воркеры. Большое ревью кода = пофайловый проход + кросс-файловый интеграционный проход.
+- `--continue` не требует ID, но находит только самую свежую сессию в *текущем* `cwd`. `--resume` требует ID или `--name`. `--fork-session` требует `--resume`/`--continue` и порождает новый ID.
+- Хранилище сессий: `~/.claude/projects/<slugified-cwd>/<session-id>.jsonl`. Неверный `cwd` — причина №1 того, что resume молча возвращает свежую сессию.
+- Устаревшие результаты инструментов в возобновлённой сессии могут навредить сильнее, чем помочь — иногда свежая сессия с тщательно подобранной сводкой превосходит возобновление.
+- Форк — чтобы сравнить; resume — чтобы продолжить; перезапуск со сводкой — когда контекст протух.
 
 ## References
 
-- [Intercept and control agent behavior with hooks](https://code.claude.com/docs/en/agent-sdk/hooks) — full Agent SDK hook reference, event table, callback shape, examples.
-- [Hooks reference](https://code.claude.com/docs/en/hooks) — every event, matcher patterns, JSON output, exit-code semantics, shell/HTTP/MCP-tool hook variants.
-- [Automate workflows with hooks](https://code.claude.com/docs/en/hooks-guide) — quickstart with worked examples.
-- [Configure hooks (Anthropic blog)](https://claude.com/blog/how-to-configure-hooks) — power-user `settings.json` walkthrough.
-- [Work with sessions](https://code.claude.com/docs/en/agent-sdk/sessions) — `continue`, `resume`, `fork_session`, capturing IDs, cross-host caveats.
+- [Intercept and control agent behavior with hooks](https://code.claude.com/docs/en/agent-sdk/hooks) — полный справочник по хукам Agent SDK, таблица событий, форма коллбэков, примеры.
+- [Hooks reference](https://code.claude.com/docs/en/hooks) — каждое событие, шаблоны matchers, JSON-вывод, семантика кодов выхода, варианты shell/HTTP/MCP-инструментальных хуков.
+- [Automate workflows with hooks](https://code.claude.com/docs/en/hooks-guide) — быстрый старт с разобранными примерами.
+- [Configure hooks (Anthropic blog)](https://claude.com/blog/how-to-configure-hooks) — обзор `settings.json` для опытных пользователей.
+- [Work with sessions](https://code.claude.com/docs/en/agent-sdk/sessions) — `continue`, `resume`, `fork_session`, фиксация ID, кросс-хостовые оговорки.
 - [CLI reference](https://code.claude.com/docs/en/cli-reference) — `--continue`, `--resume`, `--fork-session`, `--name`, `--session-id`, `--from-pr`.
-- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) — Anthropic's canonical taxonomy: prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer.
-- [Anthropic cookbook — agents patterns](https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents) — runnable notebooks for each pattern.
-- [How the agent loop works](https://code.claude.com/docs/en/agent-sdk/agent-loop) — conceptual model of turns, tool calls, where hooks fit in.
-- [Permissions](https://code.claude.com/docs/en/agent-sdk/permissions) — companion mechanism to `PreToolUse` for tool-level access control.
+- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) — каноническая таксономия Anthropic: последовательность промптов, маршрутизация, параллелизация, оркестратор–воркеры, оценщик–оптимизатор.
+- [Anthropic cookbook — agents patterns](https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents) — выполнимые ноутбуки по каждому паттерну.
+- [How the agent loop works](https://code.claude.com/docs/en/agent-sdk/agent-loop) — концептуальная модель ходов, вызовов инструментов и места, где встраиваются хуки.
+- [Permissions](https://code.claude.com/docs/en/agent-sdk/permissions) — сопутствующий механизм рядом с `PreToolUse` для контроля доступа на уровне инструмента.

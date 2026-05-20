@@ -1,43 +1,43 @@
 ---
-title: "Раздел 3 — Multi-Agent Orchestration: паттерны Coordinator–Subagent"
+title: "Раздел 3 — Multi-agent оркестрация: паттерны координатор–субагент"
 linkTitle: "3. Multi-Agent Orchestration"
 weight: 3
-description: "Domains 1.2–1.4 — границы coordinator/subagent, Task tool, явная передача контекста, parallel spawning и structured handoffs."
+description: "Domains 1.2–1.4 — границы координатора и субагента, инструмент Task, явная передача контекста, параллельный запуск и структурированные передачи."
 ---
 
 ## Что покрывает этот раздел
 
-Как проектировать hub-and-spoke coordinator, который decomposes work, запускает изолированных subagents через `Task`/`Agent` tool, передает полный context в каждом prompt и enforce deterministic prerequisites (hooks, gates), чтобы multi-step workflows чисто передавали работу другим agents или людям без потери state.
+Как проектировать координатор по схеме hub-and-spoke, который декомпозирует работу, запускает изолированных субагентов через инструмент `Task`/`Agent`, передаёт полный контекст в каждом промпте и обеспечивает детерминированные предусловия (хуки, гейты), чтобы многошаговые рабочие процессы чисто передавали работу другим агентам или людям без потери состояния.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 1.2 Coordinator–subagent patterns
+### 1.2 Паттерны координатор–субагент
 
-- **Hub-and-spoke architecture**: один coordinator agent управляет всей inter-subagent communication, error handling и information routing.
-- **Context isolation**: subagents **не** наследуют conversation history coordinator. Каждый стартует с fresh window.
-- **Coordinator responsibilities**: task decomposition, delegation, result aggregation, dynamic selection of which subagents to invoke based on query complexity (а не слепой прогон через full pipeline).
-- **Key risk**: overly narrow decomposition. Канонический пример экзамена — запрос про "creative industries", который split into *digital art, graphic design, photography* и silently omits music, writing, and film.
-- **Skills tested**: dynamic subagent selection, partitioning scope to minimize duplication, iterative refinement loops (re-delegating when synthesis reveals gaps), routing every call through coordinator for observability.
+- **Архитектура hub-and-spoke**: один координирующий агент управляет всей коммуникацией между субагентами, обработкой ошибок и маршрутизацией информации.
+- **Изоляция контекста**: субагенты **не** наследуют историю диалога координатора. Каждый стартует с чистым окном.
+- **Обязанности координатора**: декомпозиция задачи, делегирование, агрегация результатов, динамический выбор того, каких субагентов вызывать в зависимости от сложности запроса (а не слепой прогон через весь конвейер).
+- **Ключевой риск**: чрезмерно узкая декомпозиция. Канонический пример экзамена — запрос про «creative industries», который разбивается на *digital art, graphic design, photography* и молча опускает music, writing и film.
+- **Проверяемые навыки**: динамический выбор субагентов, разбиение области так, чтобы минимизировать дублирование, итеративные циклы доуточнения (повторное делегирование, когда синтез выявляет пробелы), маршрутизация каждого вызова через координатор ради наблюдаемости.
 
-### 1.3 Subagent invocation & context passing
+### 1.3 Запуск субагентов и передача контекста
 
-- **Spawning mechanism**: `Task` tool (renamed `Agent` in Claude Code v2.1.63 — see [SDK note](#a-note-on-task-vs-agent)). Coordinator должен list this tool in `allowedTools`.
-- **Explicit context**: subagent context — это все, что вы положили в prompt string. Нет automatic inheritance of parent conversation, tool results или memory.
-- **`AgentDefinition`**: per-subagent configuration object containing `description` (when to invoke), `prompt` (system prompt), `tools` / `disallowedTools` (capability restrictions), and optional `model`, `skills`, `mcpServers`, `permissionMode`.
-- **`fork_session`**: branches a session into a new one that shares prior history up to a chosen message — используется для divergent exploration from a shared baseline.
-- **Skills tested**: passing complete prior findings in spawn prompt, using structured formats (content + metadata: URLs, doc names, page numbers), emitting multiple `Task` calls in **one** coordinator response for parallelism, and writing goal/quality-criteria-style prompts rather than step-by-step procedures.
+- **Механизм запуска**: инструмент `Task` (переименован в `Agent` в Claude Code v2.1.63 — см. [замечание про SDK](#a-note-on-task-vs-agent)). Координатор обязан указать этот инструмент в `allowedTools`.
+- **Явный контекст**: контекст субагента — это то, что вы положили в строку промпта. Никакого автоматического наследования родительского диалога, результатов инструментов или памяти.
+- **`AgentDefinition`**: объект конфигурации субагента, содержащий `description` (когда вызывать), `prompt` (системный промпт), `tools` / `disallowedTools` (ограничения возможностей) и опциональные `model`, `skills`, `mcpServers`, `permissionMode`.
+- **`fork_session`**: ветвит сессию в новую, которая разделяет предыдущую историю до выбранного сообщения — используется для расходящегося исследования из общей базовой точки.
+- **Проверяемые навыки**: передача всех ранее полученных замечаний в стартовом промпте, использование структурированных форматов (контент + метаданные: URL, имена документов, номера страниц), выдача нескольких вызовов `Task` в **одном** ответе координатора ради параллелизма и написание промптов в стиле «цель + критерии качества», а не пошаговых процедур.
 
-### 1.4 Workflows with enforcement & handoff
+### 1.4 Рабочие процессы с принуждением и передачей
 
-- **Programmatic enforcement (hooks, prerequisite gates)** vs **prompt-based guidance**: когда требуется deterministic compliance (identity verification before a financial transaction), prompts alone have a non-zero failure rate.
-- **Structured handoff protocols** for mid-process escalation: customer ID, root-cause analysis, recommended action, evidence trail.
-- **Skills tested**: blocking `process_refund` until `get_customer` has returned a verified ID, decomposing multi-concern requests into parallel investigations sharing context, and compiling escalation summaries for humans who lack the transcript.
+- **Программное принуждение (хуки, prerequisite gates)** vs **рекомендации через промпт**: когда нужно детерминированное соблюдение (verификация личности перед финансовой транзакцией), у промптов есть ненулевая вероятность отказа.
+- **Структурированные протоколы передачи** при эскалации посреди процесса: ID клиента, анализ корневой причины, рекомендуемое действие, цепочка доказательств.
+- **Проверяемые навыки**: блокировка `process_refund`, пока `get_customer` не вернул верифицированный ID, декомпозиция многосоставных запросов в параллельные исследования с общим контекстом и составление сводок для эскалации людям, у которых нет транскрипта.
 
-## Architecture deep-dive
+## Архитектура — глубокое погружение
 
-### Hub-and-spoke topology
+### Топология hub-and-spoke
 
-Coordinator — *единственный* node, который talks to subagents. Subagents никогда не обращаются друг к другу напрямую. Every result returns to the hub, which decides what to do next.
+Координатор — *единственный* узел, который общается с субагентами. Субагенты никогда не обращаются друг к другу напрямую. Каждый результат возвращается в хаб, который решает, что делать дальше.
 
 ```mermaid
 flowchart TD
@@ -55,26 +55,26 @@ flowchart TD
     Coord --> User
 ```
 
-Из этой topology следуют два свойства: **observability** (каждое action flows through one node, значит coordinator-side logging captures full causal graph) и **bounded blast radius** (misbehaving subagent портит только свой context; hub видит только final message и может reject or re-delegate).
+Из этой топологии вытекают два свойства: **наблюдаемость** (каждое действие проходит через один узел, поэтому логирование на стороне координатора фиксирует полный причинно-следственный граф) и **ограниченный радиус поражения** (некорректно работающий субагент портит только свой контекст; хаб видит только его финальное сообщение и может отвергнуть его или повторно делегировать).
 
-Research feature Anthropic использует именно этот pattern: `LeadResearcher` (Opus) планирует, persists plan to memory (200k window can be truncated mid-task), запускает parallel subagents (Sonnet), и передает findings в `CitationAgent`, который re-attributes every claim. Anthropic reports **90.2% lift** over single-agent Claude Opus 4 on internal evals, at **~15× the tokens of a chat** — экономично только когда task value high. ([Anthropic engineering blog](https://www.anthropic.com/engineering/multi-agent-research-system))
+Функция Research у Anthropic использует именно этот паттерн: `LeadResearcher` (Opus) планирует, фиксирует план в память (окно на 200k токенов может быть усечено посреди задачи), запускает параллельных субагентов (Sonnet) и передаёт замечания в `CitationAgent`, который заново атрибутирует каждое утверждение. Anthropic сообщает о **росте на 90.2%** относительно одиночного Claude Opus 4 на внутренних оценках, при **примерно 15× токенов чата** — экономически оправдано только при высокой ценности задачи. ([Anthropic engineering blog](https://www.anthropic.com/engineering/multi-agent-research-system))
 
-### Почему context isolation важен
+### Почему изоляция контекста важна
 
-Window каждого subagent starts fresh. Agent SDK documents the boundary precisely ([Subagents in the SDK](https://code.claude.com/docs/en/agent-sdk/subagents)):
+Окно каждого субагента стартует с нуля. Agent SDK документирует эту границу точно ([Subagents in the SDK](https://code.claude.com/docs/en/agent-sdk/subagents)):
 
-| Subagent получает | Subagent **не** получает |
+| Субагент получает | Субагент **не** получает |
 | --- | --- |
-| Свой `AgentDefinition.prompt` | Conversation history или tool results parent |
-| String, переданный в `Task`/`Agent` tool call | Parent system prompt |
-| Tool definitions (inherited or restricted via `tools`) | Preloaded skills, unless declared in `AgentDefinition.skills` |
-| Project `CLAUDE.md` (when `settingSources` is enabled) | Memory, built up by parent across turns |
+| Свой `AgentDefinition.prompt` | Историю диалога или результаты инструментов родителя |
+| Строку, переданную в вызов инструмента `Task`/`Agent` | Системный промпт родителя |
+| Определения инструментов (унаследованные или ограниченные через `tools`) | Преднагруженные навыки, если они не объявлены в `AgentDefinition.skills` |
+| Проектный `CLAUDE.md` (когда включён `settingSources`) | Память, которую родитель накопил по ходу ходов |
 
-Три практических следствия: **(1) Compression is the feature** — subagent может read fifty files; parent получает только final message, keeping lead's context clean. **(2) Все, что нужно subagent, должно быть в prompt** — file paths, prior URLs, prior decisions, user constraint "we already ruled out option B." Forward all of it — responsibility of coordinator. **(3) No back-channel** — если subagents need shared state, write it to filesystem or external store and pass references back to coordinator. Anthropic называет это "artifact" pattern; он обходит *game of telephone*, где каждый handoff снижает fidelity.
+Три практических следствия: **(1) сжатие — это и есть фича** — субагент может прочитать пятьдесят файлов, а родителю вернётся только его финальное сообщение, оставив контекст ведущего агента чистым. **(2) Всё, что нужно субагенту, обязано быть в промпте** — пути к файлам, прежние URL, прежние решения, ограничение пользователя «we already ruled out option B». Передача всего этого — ответственность координатора. **(3) Никакого обратного канала** — если субагентам нужно общее состояние, пишите его в файловую систему или внешнее хранилище и передавайте обратно координатору ссылки. Anthropic называет это паттерном «artifact»; он обходит *игру в испорченный телефон*, где каждая передача снижает достоверность.
 
-## Spawning subagents with the Task tool
+## Запуск субагентов через инструмент Task
 
-Coordinator, который может spawn subagents, нуждается в трех вещах: `Task` (или `Agent`) tool in `allowedTools`, one or more `AgentDefinition`s и prompt, который invites delegation. Пример ниже defines two specialized subagents with restricted toolsets and then issues parallel calls from a single coordinator turn.
+Координатору, который умеет запускать субагентов, нужны три вещи: инструмент `Task` (или `Agent`) в `allowedTools`, один или несколько `AgentDefinition` и промпт, приглашающий к делегированию. Пример ниже описывает двух специализированных субагентов с ограниченным набором инструментов и затем выдаёт параллельные вызовы из одного хода координатора.
 
 ```typescript
 import { query, type AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
@@ -113,24 +113,24 @@ omitted media and re-delegate if any are missing.`,
 
 Ключевые пункты, которые проверяет экзамен:
 
-- **`"Task"` (or `"Agent"`) must be in `allowedTools`** on the coordinator, иначе Claude не может spawn anything.
-- **Никогда не кладите `Task` / `Agent` в `tools` subagent** — SDK documents this as a hard rule to prevent recursive spawning.
-- **Parallelism = multiple tool calls in one assistant turn**, not separate turns. Prompt the lead to "emit the Task calls in a single response." Anthropic reports 3–5 parallel subagents (each making 3+ parallel tool calls) cut research time by up to 90% on complex queries.
-- **Prompts specify goals and quality criteria, not procedures.** "Objective + output format + tool guidance + task boundaries" gave Anthropic the largest single quality lift; vague instructions caused duplication and silent gaps.
+- **`"Task"` (или `"Agent"`) должен быть в `allowedTools`** у координатора, иначе Claude не сможет ничего запустить.
+- **Никогда не кладите `Task` / `Agent` в `tools` субагента** — SDK документирует это как жёсткое правило, предотвращающее рекурсивный запуск.
+- **Параллелизм = несколько вызовов инструментов в одном ходе ассистента**, а не в разных ходах. Промпт ведущего агента должен явно требовать «emit the Task calls in a single response». Anthropic сообщает, что 3–5 параллельных субагентов (каждый делает 3+ параллельных вызовов инструментов) сокращают время исследования вплоть до 90% на сложных запросах.
+- **Промпты задают цели и критерии качества, а не процедуры.** Связка «цель + формат вывода + рекомендации по инструментам + границы задачи» дала Anthropic наибольший единичный прирост качества; расплывчатые инструкции приводили к дублированию и молчаливым пробелам.
 
-### `fork_session` для divergent exploration
+### `fork_session` для расходящегося исследования
 
-Когда два subagents должны попробовать *different approaches from the same baseline* — например, одна optimization branch пробует SQL rewrite, а другая index addition — используйте `fork_session`, а не re-spawning from scratch ([Sessions docs](https://code.claude.com/docs/en/agent-sdk/sessions)). Fork copies the conversation up to a chosen message, remaps UUIDs to avoid collisions, and tags each entry with `forkedFrom` for lineage. Each fork resumes independently; original preserved — идеально для A/B exploration без polluting baseline.
+Когда два субагента должны попробовать *разные подходы из одной и той же базовой точки* — например, одна ветка оптимизации пробует переписать SQL, а другая — добавить индекс — используйте `fork_session`, а не повторный запуск с нуля ([Sessions docs](https://code.claude.com/docs/en/agent-sdk/sessions)). Fork копирует диалог до выбранного сообщения, переназначает UUID во избежание коллизий и помечает каждую запись `forkedFrom` для отслеживания родословной. Каждая ветка возобновляется независимо, оригинал сохраняется — идеально для A/B-исследования без загрязнения базовой ветки.
 
-### A note on `Task` vs `Agent`
+### Замечание про `Task` vs `Agent`
 
-Certification guide называет spawning mechanism **`Task` tool**. SDK renamed it to **`Agent`** in Claude Code v2.1.63. Current SDK releases emit `"Agent"` in new `tool_use` blocks but still emit `"Task"` in `system:init` tools list and `permission_denials[].tool_name`. Для экзамена: treat `Task` as canonical (это wording in the questions). В production 2026 code match **both** names defensively (`block.name in ("Task", "Agent")`).
+Сертификационное руководство называет механизм запуска **инструментом `Task`**. SDK переименовал его в **`Agent`** в Claude Code v2.1.63. Текущие релизы SDK выдают `"Agent"` в новых блоках `tool_use`, но всё ещё выдают `"Task"` в списке инструментов `system:init` и в `permission_denials[].tool_name`. Для экзамена считайте `Task` каноническим (именно эта формулировка в вопросах). В продуктовом коде 2026 года защищайтесь от обоих имён (`block.name in ("Task", "Agent")`).
 
-## Context-passing patterns
+## Паттерны передачи контекста
 
-Поскольку subagents inherit nothing automatically, задача coordinator — упаковать self-contained briefing в каждый spawn. Principle rewarded by exam: **separate content from metadata, in a structured format, so attribution survives handoff.**
+Поскольку субагенты не наследуют ничего автоматически, задача координатора — упаковать в каждый запуск самодостаточный брифинг. Принцип, который вознаграждает экзамен: **отделять контент от метаданных, в структурированном формате, чтобы атрибуция переживала передачу.**
 
-High-quality spawn prompt — structured JSON with content separated from metadata:
+Качественный стартовый промпт — это структурированный JSON, где контент отделён от метаданных:
 
 ```json
 {
@@ -156,11 +156,11 @@ High-quality spawn prompt — structured JSON with content separated from metada
 }
 ```
 
-Почему этот format rewarded: **metadata travels with content** (`source_url`, `page`, `retrieved_at` survive the next hop, так что downstream synthesis agent получает page reference, not paraphrase); **open questions partition the scope**, чтобы subagent не переделывал работу; **explicit "do not" lines** дешевле retries; and **schema is machine-checkable** by coordinator before re-delegation.
+Почему такой формат поощряется: **метаданные путешествуют вместе с контентом** (`source_url`, `page`, `retrieved_at` переживают следующий переход, поэтому агент синтеза ниже по конвейеру получает ссылку на страницу, а не пересказ); **открытые вопросы разделяют область**, чтобы субагент не переделывал работу; **явные строки «do not»** дешевле повторных попыток; и **схема машинно проверяема** координатором перед повторным делегированием.
 
-## Enforcement: hooks vs prompts
+## Принуждение: хуки vs промпты
 
-Prompt-based guidance — "always call `get_customer` before `process_refund`" — *probabilistic*. Даже well-tuned Claude 4 model has a non-zero failure rate, unacceptable for financial, security or compliance flows. `PreToolUse` hook turns the rule into a deterministic gate.
+Рекомендация через промпт — «always call `get_customer` before `process_refund`» — *вероятностна*. Даже у хорошо настроенной модели Claude 4 ненулевая частота отказов, что неприемлемо для финансовых, security- и compliance-процессов. Хук `PreToolUse` превращает правило в детерминированный гейт.
 
 ```typescript
 import { query, type HookCallback, type PreToolUseHookInput } from
@@ -202,21 +202,21 @@ for await (const message of query({
 
 ### Когда что использовать
 
-| Concern | Prompt-based guidance | Programmatic enforcement (hooks / gates) |
+| Аспект | Рекомендация через промпт | Программное принуждение (хуки / гейты) |
 | --- | --- | --- |
-| Style, tone, formatting | Да — flexible, cheap | Overkill |
-| Tool ordering preferences | Да | Только if compliance-bound |
-| Identity verification before financial action | **Нет** — non-zero failure rate is unsafe | **Да** — `PreToolUse` deny |
-| Writes to protected paths (`.env`, `/etc`) | Нет | Да |
-| Audit logging of every tool call | Optional | Да — `PostToolUse` |
-| Cross-subagent prerequisites | Нет | Да — hook state across `SubagentStart` / `SubagentStop` |
-| Approval routing to a human | Possible but unreliable | Да — `PermissionRequest` / `canUseTool` |
+| Стиль, тон, форматирование | Да — гибко, дёшево | Избыточно |
+| Предпочтения по порядку инструментов | Да | Только если требуется соблюдение compliance |
+| Верификация личности перед финансовым действием | **Нет** — ненулевая частота отказов небезопасна | **Да** — `PreToolUse` deny |
+| Запись в защищённые пути (`.env`, `/etc`) | Нет | Да |
+| Аудит-лог каждого вызова инструмента | Опционально | Да — `PostToolUse` |
+| Кросс-субагентные предусловия | Нет | Да — состояние хука между `SubagentStart` / `SubagentStop` |
+| Маршрутизация одобрения к человеку | Возможно, но ненадёжно | Да — `PermissionRequest` / `canUseTool` |
 
-Rule of thumb: **если wrong answer irreversible or regulated, rule belongs in code, not prompt.** Hooks также правильное место, чтобы *normalize* data flowing between subagents (Domain 1.5) — к моменту, когда content reaches downstream agent, it has been schema-checked.
+Правило большого пальца: **если неверный ответ необратим или регулируется, правило живёт в коде, а не в промпте.** Хуки — также правильное место для *нормализации* данных, протекающих между субагентами (Domain 1.5): к моменту, когда контент достигает агента ниже по конвейеру, он уже проверен по схеме.
 
-## Handoff to humans
+## Передача людям
 
-Human agent, который подхватывает escalation, не имеет conversation transcript. Поэтому well-formed handoff summary — часть coordinator contract. Template ниже — то, что exam scenarios reward:
+У человека, подхватывающего эскалацию, нет транскрипта диалога. Поэтому хорошо оформленная сводка передачи — часть контракта координатора. Шаблон ниже — то, что вознаграждают экзаменационные сценарии:
 
 ```yaml
 handoff:
@@ -251,36 +251,36 @@ handoff:
   policy_refs: [PB-17, SEC-3]
 ```
 
-Human needs **identity** (don't re-verify), **case state** (don't redo lookups), **root cause** (don't re-investigate), **attempted actions and why they failed** (don't repeat or undo them), and **recommended action + policy refs** (consistency with prior cases). Та же structure works for subagent-to-subagent escalation.
+Человеку нужны **личность** (не верифицировать заново), **состояние дела** (не повторять поиски), **корневая причина** (не расследовать заново), **попытки и почему они не удались** (не повторять и не откатывать), и **рекомендуемое действие + ссылки на политики** (согласованность с прежними делами). Та же структура работает и для передачи между субагентами.
 
-## Common failure modes (and fixes)
+## Типичные режимы отказа (и их устранение)
 
-| Failure mode | Symptom | Fix |
+| Режим отказа | Симптом | Устранение |
 | --- | --- | --- |
-| **Narrow decomposition** (ловушка "creative industries → only visual arts" из Question 7) | Все subagents successfully complete, но final report silently omits entire domains. Coordinator logs show decomposition was already incomplete. | Coordinator prompt должен требовать **domain-breadth check before delegation** и **gap audit after synthesis** with re-delegation when gaps are found. Tag decomposition with canonical list of subdomains and reject if any are missing. |
-| **Over-provisioned subagent** (ловушка Question 9) | Synthesis subagent получил full web-search tools, чтобы не делать round-trip. Solves latency, breaks separation of concerns; synthesis agent теперь also researcher. | Apply least privilege: scope-restricted `verify_fact` tool for the 85% simple-lookup case; keep coordinator-routed delegation for the 15% deep cases. |
-| **Sequential where parallel was possible** | Latency scales linearly with subagent count. Coordinator emits one `Task` call, waits, emits the next. | Coordinator prompt must explicitly instruct emitting multiple `Task` calls in a **single response**. Confirm via tracing that assistant turn contained N tool_use blocks. |
-| **Missing prerequisite gate** | `process_refund` occasionally fires without a verified customer, especially under prompt drift or model upgrades. | Move the rule into a `PreToolUse` hook that denies downstream tool until a state flag set by prerequisite tool is present. |
-| **Lossy handoff to humans** | Human agent re-verifies identity, re-investigates, makes a different decision from the agent's recommendation. | Standardize a structured handoff schema (see above) and validate it at escalation boundary. |
-| **Subagent context starvation** | Subagent invents URLs, repeats prior searches, or contradicts prior findings. | Coordinator forgot it must *explicitly* pass prior findings + metadata. Use structured JSON briefings, not paraphrased prose. |
-| **Telephone-game decomposition** | Splitting one feature across planner / implementer / tester / reviewer subagents; coordination tokens exceed actual work tokens. | Use **context-centric** decomposition: split by context boundary, not by job title. An agent that owns a feature also owns its tests. Reserve multi-agent for truly parallel, low-coupling work. ([Anthropic guidance](https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them)) |
-| **Coordinator drift on long runs** | After 100+ turns the lead loses its plan. | Persist the plan to memory at the start (Research-feature pattern); on context pressure, spawn a fresh coordinator with the plan + summary handoff. |
+| **Узкая декомпозиция** (ловушка «creative industries → only visual arts» из Question 7) | Все субагенты успешно завершаются, но финальный отчёт молча опускает целые области. Логи координатора показывают, что декомпозиция уже была неполной. | Промпт координатора обязан требовать **проверку широты доменов до делегирования** и **аудит пробелов после синтеза** с повторным делегированием при обнаружении пробелов. Помечать декомпозицию каноническим списком поддоменов и отвергать её, если что-то отсутствует. |
+| **Слишком широкие полномочия у субагента** (ловушка Question 9) | Агенту синтеза дали полный набор web-search-инструментов, чтобы он не ходил кружным путём. Решает задержку, ломает разделение ответственности; агент синтеза теперь ещё и исследователь. | Применить принцип наименьших привилегий: узкий инструмент `verify_fact` для 85% случаев простой проверки; делегирование через координатор остаётся для 15% сложных случаев. |
+| **Последовательно там, где возможно параллельно** | Задержка растёт линейно с числом субагентов. Координатор выдаёт один вызов `Task`, ждёт, выдаёт следующий. | Промпт координатора должен явно требовать выдавать несколько вызовов `Task` в **одном ответе**. Подтверждать трассировкой, что ход ассистента содержал N блоков tool_use. |
+| **Отсутствующий prerequisite gate** | `process_refund` иногда срабатывает без верифицированного клиента, особенно при дрейфе промпта или обновлениях модели. | Перенести правило в хук `PreToolUse`, который запрещает нижестоящий инструмент, пока не выставлен флаг состояния от инструмента-предусловия. |
+| **Потерянная передача людям** | Человек-агент заново верифицирует личность, заново расследует, принимает иное решение, чем рекомендация агента. | Стандартизировать структурированную схему передачи (см. выше) и валидировать её на границе эскалации. |
+| **Голод по контексту у субагента** | Субагент выдумывает URL, повторяет уже сделанные поиски или противоречит ранее найденному. | Координатор забыл, что обязан *явно* передать ранее найденное + метаданные. Используйте структурированные JSON-брифинги, а не пересказанную прозу. |
+| **Декомпозиция как испорченный телефон** | Одна фича разрезана между субагентами planner / implementer / tester / reviewer; токенов координации больше, чем токенов фактической работы. | Использовать **контекст-центричную** декомпозицию: делить по границе контекста, а не по должности. Агент, который владеет фичей, владеет и её тестами. Зарезервируйте мультиагента для действительно параллельной, слабо связанной работы. ([Anthropic guidance](https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them)) |
+| **Дрейф координатора на длинных прогонах** | После 100+ ходов ведущий агент теряет свой план. | Зафиксировать план в память в самом начале (паттерн функции Research); при давлении на контекст запустить свежего координатора с планом + сводкой передачи. |
 
-## Exam-style focus points
+## Экзаменационные акценты
 
-- **Hub-and-spoke** — default topology; subagents never talk to each other.
-- **Subagents inherit nothing** — no conversation, no tool results, no parent system prompt. Pack what they need into the `Task` prompt.
-- **`Task` in coordinator's `allowedTools`**, never in subagent's `tools` (recursion).
-- **`AgentDefinition`** = `description`, `prompt`, `tools`/`disallowedTools`, plus optional `model`, `skills`, `mcpServers`, `permissionMode`.
-- **Parallelism = multiple `Task` calls in one coordinator turn.** Sequential is failure mode.
-- **Prompts specify goals and quality criteria**, not procedural steps.
-- **Pass prior findings with metadata** (URL, doc, page, retrieval timestamp) in structured form.
-- **`fork_session`** = divergent exploration from shared baseline. Not same as parallel decomposition.
-- **Hooks > prompts for deterministic compliance.** Identity verification before financial ops belongs in `PreToolUse` hook.
-- **Structured handoff** to humans: customer ID, verification status, case state, root cause, attempted actions, recommended action, policy refs.
-- **"Creative industries" trap**: all subagents succeed but coverage incomplete → coordinator's *decomposition* is root cause.
-- **"Over-provisioned synthesis agent" trap**: scope new tools to 85% case (least privilege); keep coordinator-routed delegation for 15%.
-- Multi-agent costs **3–15× more tokens** than single-agent. Justified only for breadth-first, parallelizable, high-value tasks.
+- **Hub-and-spoke** — топология по умолчанию; субагенты никогда не разговаривают друг с другом.
+- **Субагенты не наследуют ничего** — ни диалога, ни результатов инструментов, ни системного промпта родителя. Упакуйте в промпт `Task` то, что им нужно.
+- **`Task` в `allowedTools` координатора**, никогда в `tools` субагента (рекурсия).
+- **`AgentDefinition`** = `description`, `prompt`, `tools`/`disallowedTools`, плюс опционально `model`, `skills`, `mcpServers`, `permissionMode`.
+- **Параллелизм = несколько вызовов `Task` в одном ходе координатора.** Последовательность — это режим отказа.
+- **Промпты задают цели и критерии качества**, а не процедурные шаги.
+- **Передавайте предыдущие замечания вместе с метаданными** (URL, документ, страница, время извлечения) в структурированном виде.
+- **`fork_session`** = расходящееся исследование из общей базовой точки. Это не то же самое, что параллельная декомпозиция.
+- **Хуки > промпты для детерминированного соблюдения.** Верификация личности перед финансовыми операциями живёт в хуке `PreToolUse`.
+- **Структурированная передача** людям: ID клиента, статус верификации, состояние дела, корневая причина, предпринятые действия, рекомендуемое действие, ссылки на политики.
+- **Ловушка «creative industries»**: все субагенты успешны, но покрытие неполное → корневая причина в *декомпозиции* координатора.
+- **Ловушка «над-привилегированного агента синтеза»**: проектируйте новые инструменты под 85% случаев (наименьшие привилегии); делегирование через координатор оставляйте для 15%.
+- Мультиагент стоит **в 3–15 раз больше токенов**, чем одиночный агент. Оправдан только для задач с широким охватом, поддающихся параллелизации, и высокой ценностью.
 
 ## References
 

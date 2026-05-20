@@ -1,47 +1,47 @@
 ---
-title: "Раздел 8 — Custom Slash Commands, Skills, Plan Mode и Iterative Refinement"
-linkTitle: "8. Commands, Skills & Plan Mode"
+title: "Раздел 8 — Кастомные слэш-команды, навыки, режим плана и итеративная доводка"
+linkTitle: "8. Команды, навыки и режим плана"
 weight: 8
-description: "Domains 3.2, 3.4, 3.5 — .claude/commands/, .claude/skills/ с context: fork и allowed-tools, plan mode vs direct execution."
+description: "Домены 3.2, 3.4, 3.5 — .claude/commands/, .claude/skills/ с context: fork и allowed-tools, режим плана против прямого выполнения."
 ---
 
 ## Что покрывает этот раздел
 
-Расширение Claude Code через **custom slash commands** и **agent skills**, выбор **plan mode** vs direct execution (и роль **Explore subagent**), а также техники **iterative refinement**. Sample Question 4 проверяет, где должен жить shared `/review` command; Sample Question 5 проверяет выбор plan mode for monolith-to-microservices restructure.
+Расширение Claude Code через **кастомные слэш-команды** и **агентные навыки**, выбор между **режимом плана** и прямым выполнением (и роль субагента **Explore** в этом), а также техники **итеративной доводки**. Sample Question 4 проверяет, где должна жить общая слэш-команда `/review`; Sample Question 5 проверяет выбор режима плана для перестройки монолита в микросервисы.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-**3.2 Slash commands and skills.** Project commands in `.claude/commands/` (shared via VCS) vs user commands in `~/.claude/commands/` (personal). Skills in `.claude/skills/<name>/SKILL.md` with YAML frontmatter supporting `context: fork`, `allowed-tools`, `argument-hint`. `context: fork` runs skill in isolated subagent context so verbose output doesn't pollute main conversation. Personal customization: variants in `~/.claude/skills/` with different name avoid affecting teammates. Skills are on-demand task-specific; `CLAUDE.md` is always-loaded universal standards.
+**3.2 Слэш-команды и навыки.** Проектные команды в `.claude/commands/` (общие через систему контроля версий) против пользовательских команд в `~/.claude/commands/` (личные). Навыки в `.claude/skills/<name>/SKILL.md` с YAML-фронтматтером, поддерживающим `context: fork`, `allowed-tools`, `argument-hint`. `context: fork` запускает навык в изолированном контексте субагента, чтобы многословный вывод не загрязнял основной диалог. Личная кастомизация: варианты в `~/.claude/skills/` с другим именем, чтобы не затрагивать товарищей по команде. Навыки — это специализированные под задачу инструкции по запросу; `CLAUDE.md` — это всегда загружаемые универсальные стандарты.
 
-**3.4 Plan mode vs direct execution.** Plan mode is for complex tasks with large-scale changes, multiple valid approaches, architectural decisions, multi-file modifications. Direct execution is for simple, well-scoped changes (one validation check, one-file fix with clear stack trace). Plan mode enables safe exploration before commitment. Explore subagent isolates verbose discovery and returns summaries. Common pattern: plan to investigate, then direct execution to apply.
+**3.4 Режим плана против прямого выполнения.** Режим плана нужен для сложных задач с масштабными изменениями, несколькими допустимыми подходами, архитектурными решениями, правками во многих файлах. Прямое выполнение — для простых, чётко ограниченных изменений (одна проверка валидации, правка в одном файле с понятным стек-трейсом). Режим плана позволяет безопасно исследовать прежде, чем коммититься к решению. Субагент Explore изолирует многословное исследование и возвращает сводки. Типичный паттерн: план для исследования, затем прямое выполнение для применения.
 
-**3.5 Iterative refinement.** Concrete input/output examples beat prose. Test-driven iteration: tests first, then iterate on failures. Interview pattern: have Claude ask clarifying questions in unfamiliar domains. Specific test cases for edge cases (e.g., nulls in migrations). Bundle interacting issues in one message; sequence independent issues.
+**3.5 Итеративная доводка.** Конкретные примеры ввода/вывода лучше прозы. Итерация на тестах: сначала тесты, затем итерации по падениям. Паттерн интервью: попросить Claude задать уточняющие вопросы в незнакомых доменах. Конкретные тестовые случаи для граничных условий (например, `null` в миграциях). Связанные проблемы объединяйте в одно сообщение; независимые — выполняйте последовательно.
 
-## Four customization primitives
+## Четыре примитива кастомизации
 
-Claude Code exposes four mechanisms that plug into different parts of agentic loop. Knowing which to reach for is a near-certain exam target.
+Claude Code предоставляет четыре механизма, подключающихся к разным частям агентного цикла. Знание того, к какому из них обращаться, — почти гарантированная цель на экзамене.
 
-| Primitive | Trigger | Isolation | When to use |
+| Примитив | Триггер | Изоляция | Когда использовать |
 |---|---|---|---|
-| **Slash command** (`.claude/commands/foo.md`) | User types `/foo` | Main context | Reusable interactive workflow — `/review`, `/commit`, `/deploy-staging`. |
-| **Skill** (`.claude/skills/foo/SKILL.md`) | User types `/foo` *or* Claude auto-invokes when description matches | Main context; isolated with `context: fork` | Task-specific knowledge or procedure with supporting files; lets Claude decide *when* to apply it. |
-| **Subagent** (`.claude/agents/foo.md`) | Claude or user delegates a task | Always isolated; own tools and model | Verbose research, parallel work, specialists like `code-reviewer` or `Explore`. |
-| **Hook** (`hooks.json`) | Lifecycle event fires automatically (PreToolUse, PostToolUse, UserPromptSubmit, etc.) | Shell script, output fed back | Deterministic side effects — auto-lint, block protected-path edits, append commit trailers. |
+| **Слэш-команда** (`.claude/commands/foo.md`) | Пользователь набирает `/foo` | Основной контекст | Переиспользуемый интерактивный рабочий процесс — `/review`, `/commit`, `/deploy-staging`. |
+| **Навык** (`.claude/skills/foo/SKILL.md`) | Пользователь набирает `/foo` *или* Claude вызывает автоматически, когда совпадает описание | Основной контекст; изолирован при `context: fork` | Специализированное под задачу знание или процедура со вспомогательными файлами; позволяет Claude самому решать, *когда* её применять. |
+| **Субагент** (`.claude/agents/foo.md`) | Claude или пользователь делегирует задачу | Всегда изолирован; собственные инструменты и модель | Многословное исследование, параллельная работа, специалисты вроде `code-reviewer` или `Explore`. |
+| **Хук** (`hooks.json`) | Событие жизненного цикла срабатывает автоматически (PreToolUse, PostToolUse, UserPromptSubmit и др.) | Shell-скрипт, вывод подаётся обратно | Детерминированные побочные эффекты — авто-линт, блокировка правок в защищённых путях, добавление трейлеров к коммитам. |
 
-Anthropic **merged custom slash commands into skills** in late 2025: file at `.claude/commands/deploy.md` and skill at `.claude/skills/deploy/SKILL.md` both create `/deploy` and behave identically. Skills are recommended form because they add supporting files, invocation control, dynamic context injection, and subagent execution ([slash-commands docs](https://docs.anthropic.com/en/docs/claude-code/slash-commands)).
+Anthropic **объединила кастомные слэш-команды с навыками** в конце 2025 года: файл по пути `.claude/commands/deploy.md` и навык по пути `.claude/skills/deploy/SKILL.md` оба создают `/deploy` и ведут себя идентично. Навыки — рекомендуемая форма, потому что они добавляют вспомогательные файлы, контроль вызова, динамическую инъекцию контекста и исполнение в субагенте ([документация по слэш-командам](https://docs.anthropic.com/en/docs/claude-code/slash-commands)).
 
-## Custom slash commands
+## Кастомные слэш-команды
 
-### Project vs user scope
+### Проектная и пользовательская область видимости
 
-- **`.claude/commands/`** — project scope, version-controlled, team-wide workflows (`/review`, `/security-review`, `/migrate-route`).
-- **`~/.claude/commands/`** — user scope, personal-only shortcuts (`/scratch`, `/jira-link`).
+- **`.claude/commands/`** — проектная область, под контролем версий, общекомандные рабочие процессы (`/review`, `/security-review`, `/migrate-route`).
+- **`~/.claude/commands/`** — пользовательская область, только личные шорткаты (`/scratch`, `/jira-link`).
 
-Sample Question 4 hinges on this: `/review` that "should be available to every developer when they clone or pull the repository" goes in **`.claude/commands/`** — not `~/.claude/commands/`, not `CLAUDE.md`, not fictional `.claude/config.json`.
+Sample Question 4 опирается именно на это: команда `/review`, которая «должна быть доступна каждому разработчику, когда он клонирует или подтягивает репозиторий», помещается в **`.claude/commands/`** — не в `~/.claude/commands/`, не в `CLAUDE.md` и не в вымышленный `.claude/config.json`.
 
-### File layout and frontmatter
+### Структура файла и фронтматтер
 
-Command is a markdown file with optional YAML frontmatter:
+Команда — это markdown-файл с опциональным YAML-фронтматтером:
 
 ```markdown
 ---
@@ -62,31 +62,31 @@ Review the changes in $ARGUMENTS using our checklist:
 For each finding, output: severity, file:line, problem, suggested fix.
 ```
 
-Key frontmatter fields ([reference](https://docs.anthropic.com/en/docs/claude-code/slash-commands#frontmatter-reference)):
+Ключевые поля фронтматтера ([справочник](https://docs.anthropic.com/en/docs/claude-code/slash-commands#frontmatter-reference)):
 
-| Field | Purpose |
+| Поле | Назначение |
 |---|---|
-| `description` | Summary shown in `/help`; also drives auto-invocation. Keep under ~60 chars. |
-| `argument-hint` | Autocomplete hint like `[issue-number]` or `[filename] [format]`. |
-| `allowed-tools` | Tools usable without per-call approval. Accepts globbed Bash patterns like `Bash(git:*)`. |
-| `model` | Override model for this command (`haiku`/`sonnet`/`opus`/`inherit`). |
-| `disable-model-invocation` | `true` forces human-triggered only — for side-effecting workflows like `/deploy`. |
+| `description` | Краткое описание, показываемое в `/help`; также управляет автовызовом. Держите под ~60 символов. |
+| `argument-hint` | Подсказка для автодополнения вида `[issue-number]` или `[filename] [format]`. |
+| `allowed-tools` | Инструменты, доступные без поштучного подтверждения. Принимает glob-шаблоны Bash вроде `Bash(git:*)`. |
+| `model` | Переопределяет модель для этой команды (`haiku`/`sonnet`/`opus`/`inherit`). |
+| `disable-model-invocation` | `true` заставляет вызывать только вручную — для рабочих процессов с побочными эффектами вроде `/deploy`. |
 
-All fields are optional.
+Все поля опциональны.
 
-### Argument handling, bash execution, file references
+### Обработка аргументов, выполнение bash, ссылки на файлы
 
-Three substitution mechanisms ride inside markdown body:
+Внутри тела markdown работают три механизма подстановки:
 
-- **`$ARGUMENTS`** — full argument string. `$ARGUMENTS[N]` indexes by position; `$N` is shorthand.
-- **`` !`cmd` ``** — executes bash command at load time and inlines stdout (e.g., `` !`git diff HEAD` ``).
-- **`@path`** — inlines file contents; `@$0` inlines file whose path is first argument.
+- **`$ARGUMENTS`** — полная строка аргументов. `$ARGUMENTS[N]` индексирует по позиции; `$N` — краткая форма.
+- **`` !`cmd` ``** — выполняет bash-команду в момент загрузки и подставляет её stdout (например, `` !`git diff HEAD` ``).
+- **`@path`** — подставляет содержимое файла; `@$0` подставляет файл, путь к которому задан первым аргументом.
 
-> Exam note: older docs used `$1` for the *first* argument. Current docs renumber to 0-based (`$0`, `$1`, `$2`). Recognize either; prefer `$ARGUMENTS` when order doesn't matter.
+> Заметка к экзамену: старая документация использовала `$1` для *первого* аргумента. В текущей документации нумерация с нуля (`$0`, `$1`, `$2`). Узнавайте оба варианта; предпочитайте `$ARGUMENTS`, когда порядок не важен.
 
-### Example: `/review`
+### Пример: `/review`
 
-Project-scoped `/review` for Sample Question 4 — commit this to `.claude/commands/review.md` and every teammate gets `/review` on next pull:
+Команда `/review` проектной области для Sample Question 4 — закоммитьте этот файл в `.claude/commands/review.md`, и каждый член команды получит `/review` после следующего pull:
 
 ```markdown
 ---
@@ -106,9 +106,9 @@ Apply each checklist item. For every finding, report severity
 End with a one-paragraph overall verdict.
 ```
 
-## Agent skills
+## Агентные навыки
 
-### File layout
+### Структура файлов
 
 ```
 .claude/skills/pr-summary/
@@ -117,28 +117,28 @@ End with a one-paragraph overall verdict.
   example-good.md
 ```
 
-Skills discovered at four levels — enterprise, user (`~/.claude/skills/`), project (`.claude/skills/`), and plugin. Enterprise overrides personal, personal overrides project; plugin skills live in `plugin-name:skill-name` namespace ([skills docs](https://docs.anthropic.com/en/docs/claude-code/skills)).
+Навыки обнаруживаются на четырёх уровнях — корпоративном, пользовательском (`~/.claude/skills/`), проектном (`.claude/skills/`) и плагинном. Корпоративный перекрывает пользовательский, пользовательский перекрывает проектный; плагинные навыки живут в пространстве имён `plugin-name:skill-name` ([документация по навыкам](https://docs.anthropic.com/en/docs/claude-code/skills)).
 
-### Frontmatter reference
+### Справочник по фронтматтеру
 
-Beyond shared command fields, skills add:
+Помимо полей, общих с командами, у навыков добавляются:
 
-| Field | Purpose |
+| Поле | Назначение |
 |---|---|
-| `name` | Skill identifier (defaults to directory name). |
-| `description` | What skill does and when to use it; drives auto-invocation. `description` + `when_to_use` cap at 1,536 chars combined. |
-| `when_to_use` | Extra trigger phrases appended to `description`. |
-| `arguments` | Named positional args, e.g. `arguments: [issue, branch]` → `$issue`, `$branch`. |
-| `user-invocable` | `false` hides from `/` menu; Claude can still use it as background knowledge. |
-| `disable-model-invocation` | `true` blocks auto-invocation — pair with side-effecting skills (`/deploy`). |
-| `context` | `fork` to run inside isolated subagent. |
-| `agent` | Subagent type for forked skills (`Explore`, `Plan`, custom). |
-| `hooks` | Lifecycle hooks scoped to this skill. |
-| `paths` | Glob patterns that gate auto-invocation to matching files. |
+| `name` | Идентификатор навыка (по умолчанию — имя директории). |
+| `description` | Что навык делает и когда им пользоваться; управляет автовызовом. `description` + `when_to_use` суммарно не более 1 536 символов. |
+| `when_to_use` | Дополнительные фразы-триггеры, дописываемые к `description`. |
+| `arguments` | Именованные позиционные аргументы, например `arguments: [issue, branch]` → `$issue`, `$branch`. |
+| `user-invocable` | `false` прячет из меню `/`; Claude может использовать как фоновое знание. |
+| `disable-model-invocation` | `true` блокирует автовызов — сочетайте с навыками, имеющими побочные эффекты (`/deploy`). |
+| `context` | `fork` для запуска внутри изолированного субагента. |
+| `agent` | Тип субагента для форкнутых навыков (`Explore`, `Plan`, кастомный). |
+| `hooks` | Хуки жизненного цикла, ограниченные этим навыком. |
+| `paths` | Glob-шаблоны, ограничивающие автовызов файлами, совпадающими с шаблоном. |
 
-### `context: fork` — what it does and when to use it
+### `context: fork` — что это и когда применять
 
-By default skill runs inline, so its output — file listings, intermediate thoughts, search results — eats into parent context window. `context: fork` **dispatches skill to a fresh subagent**: skill content becomes subagent prompt, subagent runs with own tools and permissions, and only final summary returns to parent.
+По умолчанию навык исполняется внутри основного контекста, поэтому его вывод — листинги файлов, промежуточные мысли, результаты поиска — съедает родительское контекстное окно. `context: fork` **отправляет навык в свежий субагент**: содержимое навыка становится промптом субагента, субагент работает со своими инструментами и разрешениями, а в родительский контекст возвращается только итоговая сводка.
 
 ```yaml
 ---
@@ -154,112 +154,112 @@ group changes by subsystem, call out risky touches (auth, billing,
 migrations), and end with a 3-bullet reviewer checklist.
 ```
 
-Fork when skill is **verbose** (codebase analysis, large-diff summary), **exploratory** (brainstorming alternatives), or **independent** (returns a summary, not raw artifacts parent edits). Don't fork pure "use these conventions" skills — subagent gets guidelines but no actionable task and returns empty.
+Форкайте, когда навык **многословен** (анализ кодовой базы, сводка по большому диффу), **исследовательский** (брейншторм альтернатив) или **независим** (возвращает сводку, а не сырые артефакты, которые правит родитель). Не форкайте чистые «соблюдай эти соглашения» навыки — субагент получит инструкции без конкретной задачи и вернёт пустоту.
 
-### Personal-variant pattern
+### Паттерн личного варианта
 
-To customize shared skill without affecting teammates, copy it under different name into `~/.claude/skills/` (e.g., `pr-summary-detailed/`). This avoids "I edited shared skill and now everyone gets my flavor" antipattern. Same renaming trick works for slash commands in `~/.claude/commands/`.
+Чтобы кастомизировать общий навык, не затронув товарищей по команде, скопируйте его под другим именем в `~/.claude/skills/` (например, `pr-summary-detailed/`). Это позволяет избежать антипаттерна «я отредактировал общий навык, и теперь у всех мой вариант». Тот же трюк с переименованием работает для слэш-команд в `~/.claude/commands/`.
 
-### Skills vs CLAUDE.md decision matrix
+### Матрица решений: навыки против CLAUDE.md
 
-| Need | Pick |
+| Потребность | Что выбрать |
 |---|---|
-| Universal standards active every session (tech stack, style) | `CLAUDE.md` |
-| On-demand, task-specific procedure with supporting files | Skill |
-| Interactive workflow with no auto-invocation | Skill with `disable-model-invocation: true` |
-| Per-file-type convention gated on path globs | Path-scoped rule (`.claude/rules/`) or skill with `paths:` |
-| Convention that must run as code, not advice | Hook |
-| Verbose discovery that would flood context | Skill with `context: fork`, or delegate to Explore |
+| Универсальные стандарты, активные в каждой сессии (стек, стиль) | `CLAUDE.md` |
+| Процедура по запросу, специализированная под задачу, со вспомогательными файлами | Навык |
+| Интерактивный рабочий процесс без автовызова | Навык с `disable-model-invocation: true` |
+| Соглашение под тип файла, привязанное к glob-шаблонам путей | Правило с областью путей (`.claude/rules/`) или навык с `paths:` |
+| Соглашение, которое должно исполняться как код, а не как совет | Хук |
+| Многословное исследование, которое затопит контекст | Навык с `context: fork` или делегирование Explore |
 
-`CLAUDE.md` is **always-on context** — cheap to load, expensive at scale. Skills are **on-demand context** — heavier per use but free when unused.
+`CLAUDE.md` — это **всегда включённый контекст**: дёшев загрузить, дорог при масштабе. Навыки — это **контекст по запросу**: тяжелее за одно использование, но бесплатны, когда не используются.
 
-## Plan mode vs direct execution
+## Режим плана против прямого выполнения
 
-### How to enter plan mode
+### Как войти в режим плана
 
-Plan mode is one of six permission modes; Claude reads files and runs read-only commands but cannot edit source ([permission-modes docs](https://docs.anthropic.com/en/docs/claude-code/permission-modes)). Four entry points:
+Режим плана — один из шести режимов разрешений; Claude читает файлы и выполняет команды только для чтения, но не может править исходный код ([документация по режимам разрешений](https://docs.anthropic.com/en/docs/claude-code/permission-modes)). Четыре точки входа:
 
-1. **Cycle in-session** with `Shift+Tab`: `default → acceptEdits → plan`.
-2. **At startup**: `claude --permission-mode plan` (also works with `-p` for headless).
-3. **Project default**: `permissions.defaultMode: "plan"` in `.claude/settings.json`.
-4. **Per-prompt**: prefix a message with `/plan`.
+1. **Циклический переключатель в сессии** через `Shift+Tab`: `default → acceptEdits → plan`.
+2. **При запуске**: `claude --permission-mode plan` (работает и с `-p` для headless-режима).
+3. **По умолчанию для проекта**: `permissions.defaultMode: "plan"` в `.claude/settings.json`.
+4. **На один промпт**: префикс `/plan` в сообщении.
 
-When plan ready Claude offers to (a) approve and switch to auto, (b) approve and review each edit, or (c) keep planning. `Ctrl+G` opens plan in editor; `Shift+Tab` exits without approving.
+Когда план готов, Claude предлагает (a) утвердить и переключиться в авто, (b) утвердить и просматривать каждую правку либо (c) продолжать планировать. `Ctrl+G` открывает план в редакторе; `Shift+Tab` выходит без утверждения.
 
-### When plan mode pays off
+### Когда режим плана окупается
 
-Reach for plan mode when any of:
+Тянитесь к режиму плана, когда верно хотя бы одно из:
 
-- Change spans **many files or architectural seams** (microservices restructure, library migration affecting 45+ files).
-- **Multiple valid approaches** with real tradeoffs (Redis vs in-memory vs file cache; webhook vs polling).
-- **Scope is unknown** — question is "how big?" not "implement this."
-- **High blast radius**: schema migrations, auth refactors, cross-team contracts.
+- Изменение охватывает **много файлов или архитектурных швов** (перестройка в микросервисы, миграция библиотеки, затрагивающая 45+ файлов).
+- **Несколько допустимых подходов** с реальными компромиссами (Redis против in-memory против файлового кэша; вебхуки против опроса).
+- **Объём неизвестен** — вопрос «насколько большое?», а не «реализуй вот это».
+- **Высокий радиус поражения**: миграции схем, рефакторинги аутентификации, межкомандные контракты.
 
-Sample Question 5 is first bullet: restructuring monolith into microservices spans dozens of files plus boundary decisions — textbook plan mode. Wrong answer ("let implementation reveal the boundaries") loses to rework as soon as hidden dependency surfaces.
+Sample Question 5 — это первый пункт: перестройка монолита в микросервисы охватывает десятки файлов и решения о границах — учебниковый случай режима плана. Неправильный ответ («пусть реализация выявит границы») проигрывает переделке, как только вскроется скрытая зависимость.
 
-### When direct execution is correct
+### Когда правильное прямое выполнение
 
-- Single-file bug with clear stack trace and obvious fix.
-- One validation check, one log line, one feature flag.
-- Mechanical refactor with known target (rename across N files — use `acceptEdits`).
-- You already have a plan from prior turn.
+- Однофайловый баг с чётким стек-трейсом и очевидным исправлением.
+- Одна проверка валидации, одна строка лога, один feature flag.
+- Механический рефакторинг с известной целью (переименование во многих файлах — используйте `acceptEdits`).
+- У вас уже есть план с предыдущего хода.
 
-Plan mode has overhead — extra exploration tokens for Claude, plan review for developer. Don't pay it on three-line changes.
+У режима плана есть накладные расходы — дополнительные токены на исследование для Claude, время на просмотр плана у разработчика. Не платите их на изменениях из трёх строк.
 
-### The Explore subagent for verbose discovery
+### Субагент Explore для многословного исследования
 
-Even outside plan mode, delegate discovery phase to built-in **Explore** subagent — read-only, Haiku-backed, access to Glob/Grep/Read/Bash but no Write/Edit. Each invocation runs in own context window and returns only summary ([sub-agents docs](https://docs.anthropic.com/en/docs/claude-code/sub-agents)).
+Даже вне режима плана делегируйте фазу исследования встроенному субагенту **Explore** — только чтение, на Haiku, с доступом к Glob/Grep/Read/Bash, но без Write/Edit. Каждый вызов работает в собственном контекстном окне и возвращает только сводку ([документация по субагентам](https://docs.anthropic.com/en/docs/claude-code/sub-agents)).
 
-Use Explore (directly, or via skill with `context: fork` and `agent: Explore`) for "where is X defined?" / "how does Y work?" questions, multi-phase tasks that would blow context budget on discovery, and broad searches whose raw output you won't reread. Specify thoroughness: `quick`, `medium`, or `very thorough`.
+Используйте Explore (напрямую или через навык с `context: fork` и `agent: Explore`) для вопросов «где определён X?» / «как работает Y?», для многофазных задач, которые сожгут контекстный бюджет на исследовании, и для широких поисков, чей сырой вывод вы не будете перечитывать. Указывайте тщательность: `quick`, `medium` или `very thorough`.
 
-### Combined pattern: plan then execute
+### Совмещённый паттерн: сначала план, потом выполнение
 
-Recommended workflow for non-trivial work is **explore → plan → execute → commit** ([best practices](https://docs.anthropic.com/en/docs/claude-code/best-practices)): delegate survey to Explore, have Claude write plan, review/edit it with `Ctrl+G`, approve into `acceptEdits`, then commit. Plan mode for investigation, direct execution for edits.
+Рекомендуемый рабочий процесс для нетривиальной работы — **explore → plan → execute → commit** ([лучшие практики](https://docs.anthropic.com/en/docs/claude-code/best-practices)): делегируйте обзор Explore, попросите Claude написать план, просмотрите/отредактируйте его через `Ctrl+G`, утвердите в `acceptEdits`, затем коммитьте. Режим плана для исследования, прямое выполнение — для правок.
 
-## Iterative refinement playbook
+## Плейбук итеративной доводки
 
-### 1. Provide input/output examples
+### 1. Дайте примеры ввода/вывода
 
-When prose ambiguity is bottleneck (extraction, transformation, formatting), supply **2–3 concrete input/output pairs** instead of more adjectives. Claude generalizes from examples more reliably than from prose like "friendly but professional." Examples double as regression cases.
+Когда узким местом является неоднозначность прозы (извлечение, преобразование, форматирование), давайте **2–3 конкретные пары ввод/вывод** вместо новых прилагательных. Claude обобщает от примеров надёжнее, чем от прозы вроде «дружелюбно, но профессионально». Примеры заодно служат регрессионными случаями.
 
-### 2. Test-driven iteration
+### 2. Итерация на тестах
 
-Tests are unambiguous verification signal. Loop: have Claude write suite covering happy path, edge cases, and performance budgets *before* implementation exists; run it and share failures; have Claude implement minimum needed to flip failing test green; repeat until green; refactor with suite as safety net. This is "give Claude a way to verify its work" principle made concrete.
+Тесты — это однозначный сигнал верификации. Цикл: попросите Claude написать набор тестов, покрывающий happy path, граничные случаи и бюджеты производительности *до* того, как появится реализация; запустите его и поделитесь падениями; попросите Claude реализовать минимум, нужный для того, чтобы упавший тест стал зелёным; повторяйте до зелёного; рефакторите, опираясь на набор тестов как на страховочную сетку. Это конкретное воплощение принципа «дайте Claude способ проверить свою работу».
 
-### 3. The interview pattern
+### 3. Паттерн интервью
 
-In unfamiliar domains, ask Claude to interview you before writing code: *"Before you implement caching, list the questions you'd need answered (eviction, invalidation, failure modes, memory budget, multi-tenant isolation) and ask each one."* This surfaces considerations developer didn't anticipate. Use it for cross-cutting concerns: caching, retries, auth, billing, migrations.
+В незнакомых доменах попросите Claude взять у вас интервью прежде, чем писать код: *«Прежде чем реализовывать кэширование, перечисли вопросы, на которые тебе нужны ответы (вытеснение, инвалидация, режимы отказа, бюджет памяти, мульти-арендная изоляция), и задай каждый из них»*. Это вытаскивает на поверхность соображения, которые разработчик не предвидел. Применяйте для сквозных тем: кэширование, повторные попытки, аутентификация, биллинг, миграции.
 
-### 4. Batch interacting fixes vs sequence independent fixes
+### 4. Связанные правки объединяйте, независимые — выполняйте последовательно
 
-When multiple issues surface, decide whether they interact:
+Когда всплывает несколько проблем, решите, взаимосвязаны ли они:
 
-- **Interacting** — a fix in one place changes the right answer elsewhere (changing date format affects parsing, display, DB writes). Put all in a **single detailed message** so Claude reasons holistically.
-- **Independent** — typo in helper, missing null check elsewhere. Fix **sequentially**, one per turn — small diffs, fresh context, attributable failures.
+- **Связанные** — правка в одном месте меняет правильный ответ в другом (смена формата даты влияет на парсинг, отображение, записи в БД). Сложите все в **одно подробное сообщение**, чтобы Claude рассуждал целостно.
+- **Независимые** — опечатка в хелпере, отсутствующая `null`-проверка в другом месте. Чините **последовательно**, по одной за ход — небольшие диффы, свежий контекст, легко атрибутируемые падения.
 
-For single failing edge case (null in migration), supply specific input/expected output for that case — don't rewrite whole script.
+Для одного падающего граничного случая (`null` в миграции) дайте конкретный ввод/ожидаемый вывод именно для этого случая — не переписывайте весь скрипт.
 
-## Exam-style focus points
+## Ключевые акценты для экзамена
 
-- Team-shared commands live in **`.claude/commands/<name>.md`** in repo. Not `~/.claude/commands/`, not `CLAUDE.md`, not fictional `config.json`.
-- Skills are **on-demand**, `CLAUDE.md` is **always-loaded**. Persistent standards go in `CLAUDE.md`; task-specific workflows go in skills.
-- `context: fork` isolates verbose or exploratory skill output in subagent; pair with `agent: Explore` for read-only discovery.
-- `allowed-tools` pre-approves a tool list while skill is active; it does not block other tools — permission rules still apply.
-- `argument-hint` powers autocomplete; `$ARGUMENTS`/`$N` substitute actual values into prompt body.
-- Plan mode entered via `Shift+Tab` cycle, `--permission-mode plan`, `/plan` prefix, or `defaultMode: "plan"`. It is read-only.
-- Pick plan mode for architectural / multi-file / multi-approach work; pick direct execution for single-file, well-scoped changes.
-- Explore subagent is built-in, Haiku-backed, read-only, and returns summaries — use it to keep discovery out of main context.
-- Iteration: input/output examples beat prose; tests are highest-leverage feedback loop; interview in unfamiliar domains; batch interacting fixes, sequence independent ones.
+- Общекомандные команды живут в **`.claude/commands/<name>.md`** в репозитории. Не в `~/.claude/commands/`, не в `CLAUDE.md`, не в вымышленном `config.json`.
+- Навыки — **по запросу**, `CLAUDE.md` — **всегда загружается**. Постоянные стандарты идут в `CLAUDE.md`; специализированные под задачу рабочие процессы — в навыки.
+- `context: fork` изолирует многословный или исследовательский вывод навыка в субагенте; сочетайте с `agent: Explore` для исследования только на чтение.
+- `allowed-tools` предодобряет список инструментов, пока навык активен; он не блокирует другие инструменты — правила разрешений всё равно применяются.
+- `argument-hint` управляет автодополнением; `$ARGUMENTS`/`$N` подставляют фактические значения в тело промпта.
+- Режим плана активируется циклом `Shift+Tab`, `--permission-mode plan`, префиксом `/plan` или `defaultMode: "plan"`. Он только для чтения.
+- Выбирайте режим плана для архитектурной / многофайловой / многовариантной работы; выбирайте прямое выполнение для однофайловых, чётко ограниченных изменений.
+- Субагент Explore встроен, работает на Haiku, только для чтения, возвращает сводки — используйте его, чтобы держать исследование вне основного контекста.
+- Итерация: примеры ввода/вывода лучше прозы; тесты — самая рычажная петля обратной связи; интервью в незнакомых доменах; связанные правки объединяйте, независимые — выполняйте последовательно.
 
-## References
+## Ссылки
 
-- Slash commands — <https://docs.anthropic.com/en/docs/claude-code/slash-commands>
-- Skills — <https://docs.anthropic.com/en/docs/claude-code/skills>
-- Permission modes (plan mode) — <https://docs.anthropic.com/en/docs/claude-code/permission-modes>
-- Subagents (Explore) — <https://docs.anthropic.com/en/docs/claude-code/sub-agents>
-- Hooks — <https://docs.anthropic.com/en/docs/claude-code/hooks>
-- Best practices — <https://docs.anthropic.com/en/docs/claude-code/best-practices>
-- Extend Claude Code — <https://docs.anthropic.com/en/docs/claude-code/features-overview>
-- Open Agent Skills standard — <https://agentskills.io/>
-- Claude Code repo — <https://github.com/anthropics/claude-code>
-- Official plugins — <https://github.com/anthropics/claude-plugins-official>
+- Слэш-команды — <https://docs.anthropic.com/en/docs/claude-code/slash-commands>
+- Навыки — <https://docs.anthropic.com/en/docs/claude-code/skills>
+- Режимы разрешений (режим плана) — <https://docs.anthropic.com/en/docs/claude-code/permission-modes>
+- Субагенты (Explore) — <https://docs.anthropic.com/en/docs/claude-code/sub-agents>
+- Хуки — <https://docs.anthropic.com/en/docs/claude-code/hooks>
+- Лучшие практики — <https://docs.anthropic.com/en/docs/claude-code/best-practices>
+- Расширение Claude Code — <https://docs.anthropic.com/en/docs/claude-code/features-overview>
+- Стандарт Open Agent Skills — <https://agentskills.io/>
+- Репозиторий Claude Code — <https://github.com/anthropics/claude-code>
+- Официальные плагины — <https://github.com/anthropics/claude-plugins-official>

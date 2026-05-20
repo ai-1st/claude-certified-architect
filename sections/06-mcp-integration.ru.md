@@ -1,55 +1,55 @@
 ---
-title: "Раздел 6 — MCP Integration: Errors, Servers & Resources"
+title: "Раздел 6 — Интеграция MCP: ошибки, серверы и ресурсы"
 linkTitle: "6. MCP Integration"
 weight: 6
-description: "Domains 2.2, 2.4 — structured error envelopes (isError, isRetryable), scopes и env expansion в .mcp.json, resources vs tools."
+description: "Domains 2.2, 2.4 — структурированные конверты ошибок (isError, isRetryable), области видимости и подстановка переменных окружения в .mcp.json, ресурсы vs инструменты."
 ---
 
 ## Что покрывает этот раздел
 
-Два operationally critical MCP domains: как tools должны *report failure*, чтобы agent мог intelligently recover (2.2), и как servers and resources should be wired into Claude Code, чтобы команда получила правильные capabilities at right scope (2.4). MCP — contract between server and agent; quality of that contract (errors, descriptions, resources) determines whether agent makes smart decisions or thrashes.
+Две операционно критичные области MCP: как инструменты должны *сообщать о сбоях*, чтобы агент мог разумно восстанавливаться (2.2), и как серверы и ресурсы подключать к Claude Code, чтобы команда получила правильные возможности на правильной области видимости (2.4). MCP — это контракт между сервером и агентом; качество этого контракта (ошибки, описания, ресурсы) определяет, принимает ли агент разумные решения или мечется.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 2.2 Structured error responses
+### 2.2 Структурированные ответы об ошибках
 
-Knowledge: four error classes (transient, validation, business, permission); почему uniform `"Operation failed"` responses break recovery; retryable vs non-retryable.
+Знание: четыре класса ошибок (transient, validation, business, permission); почему однообразные ответы `"Operation failed"` ломают восстановление; retryable vs non-retryable.
 
-Skills: return `errorCategory`, `isRetryable`, and human-readable description; mark business-rule violations with `retriable: false` plus customer-friendly explanation; have subagents do local recovery for transient errors and escalate only what can't be locally resolved (with partial results and what was attempted); distinguish *access failures* from *valid empty results*.
+Навыки: возвращать `errorCategory`, `isRetryable` и человекочитаемое описание; помечать нарушения бизнес-правил как `retriable: false` плюс понятным клиенту пояснением; поручать субагентам локальное восстановление от transient-ошибок и эскалировать только то, что нельзя разрешить локально (вместе с частичными результатами и описанием попыток); отличать *сбой доступа* от *валидного пустого результата*.
 
-### 2.4 Server integration
+### 2.4 Интеграция сервера
 
-Knowledge: project (`.mcp.json`) vs user (`~/.claude.json`) scope; `${VAR}` expansion for secrets; tools from all servers are discovered at connection time and available simultaneously; resources expose content catalogs to reduce exploratory tool calls.
+Знание: область проекта (`.mcp.json`) vs пользователя (`~/.claude.json`); подстановка `${VAR}` для секретов; инструменты всех серверов обнаруживаются в момент подключения и доступны одновременно; ресурсы экспонируют каталоги контента, чтобы сократить разведывательные вызовы инструментов.
 
-Skills: configure shared servers in `.mcp.json` with env-var expansion; configure personal servers in user scope; write rich tool descriptions so agent doesn't fall back to built-ins like `Grep`; pick community servers (Jira, GitHub, Postgres) over custom; expose content catalogs as resources.
+Навыки: настраивать общие серверы в `.mcp.json` с подстановкой переменных окружения; настраивать персональные серверы в пользовательской области; писать богатые описания инструментов, чтобы агент не скатывался к встроенным вроде `Grep`; выбирать community-серверы (Jira, GitHub, Postgres) вместо кастомных; экспонировать каталоги контента как ресурсы.
 
-## MCP на высоте 30,000 feet
+## MCP с высоты 30,000 футов
 
-[Model Context Protocol](https://modelcontextprotocol.io/specification/latest) — open, JSON-RPC 2.0 protocol that connects LLM hosts to capability providers (servers) over stateful, capability-negotiated session. Servers expose three primitives:
+[Model Context Protocol](https://modelcontextprotocol.io/specification/latest) — открытый протокол на JSON-RPC 2.0, соединяющий LLM-хосты с провайдерами возможностей (серверами) через сессию с состоянием и согласованием возможностей. Серверы выставляют три примитива:
 
-| Primitive | Controlled by | Purpose | Example |
+| Примитив | Управляется | Назначение | Пример |
 | --- | --- | --- | --- |
-| **Tool** | Model | Executable action with side effects | `create_issue`, `run_query`, `send_email` |
-| **Resource** | Application / user | Read-only content identified by URI | `jira://issues/PROJ-123`, `postgres://schema/orders` |
-| **Prompt** | User | Pre-built templates invoked by user choice (slash commands, menu picks) | `/code-review`, `/summarize-incident` |
+| **Tool** | Моделью | Исполняемое действие с побочными эффектами | `create_issue`, `run_query`, `send_email` |
+| **Resource** | Приложением / пользователем | Read-only контент, идентифицируемый URI | `jira://issues/PROJ-123`, `postgres://schema/orders` |
+| **Prompt** | Пользователем | Заготовленные шаблоны, вызываемые по выбору пользователя (slash-команды, пункты меню) | `/code-review`, `/summarize-incident` |
 
-Transports defined in spec: **stdio** (local subprocess), **Streamable HTTP** (called `streamable-http` in spec, aliased to `http` in Claude Code config), and legacy **SSE** transport. See [schema reference](https://modelcontextprotocol.io/specification/2025-11-25/schema) for wire format.
+Транспорты, определённые в спецификации: **stdio** (локальный подпроцесс), **Streamable HTTP** (`streamable-http` в спецификации, в конфигурации Claude Code алиас `http`) и устаревший транспорт **SSE**. Формат провода см. в [schema reference](https://modelcontextprotocol.io/specification/2025-11-25/schema).
 
-## Structured error responses
+## Структурированные ответы об ошибках
 
-### Error category taxonomy
+### Таксономия категорий ошибок
 
-| Category | What it means | Typical `isRetryable` | What the agent should do |
+| Категория | Что означает | Типичный `isRetryable` | Что должен делать агент |
 | --- | --- | --- | --- |
-| `transient` | Timeout, 5xx, rate limit, connection reset | `true` | Back off and retry locally inside subagent |
-| `validation` | Schema mismatch, bad enum, missing field | `false` | Reformulate input; do not retry same call |
-| `business` | Policy/limit/state violation ("refund > $500", "ticket already closed") | `false` | Surface customer-facing explanation; stop |
-| `permission` | 401/403, scope missing, RBAC denied | `false` | Escalate to coordinator or human |
-| `not_found` | Valid query, zero matches | `false` (and `isError` is debatable — see below) | Treat as legitimate empty result, not failure |
+| `transient` | Таймаут, 5xx, rate limit, сброс соединения | `true` | Отступить и повторить локально внутри субагента |
+| `validation` | Несовпадение схемы, неверный enum, отсутствующее поле | `false` | Переформулировать ввод; не повторять тот же вызов |
+| `business` | Нарушение политики/лимита/состояния («refund > $500», «ticket already closed») | `false` | Показать пояснение для клиента; остановиться |
+| `permission` | 401/403, отсутствующий scope, отказ RBAC | `false` | Эскалировать координатору или человеку |
+| `not_found` | Валидный запрос, ноль совпадений | `false` (и `isError` спорен — см. ниже) | Трактовать как легитимный пустой результат, а не как сбой |
 
-### `isError` flag — schema and example
+### Флаг `isError` — схема и пример
 
-Official [`CallToolResult`](https://modelcontextprotocol.io/specification/2025-11-25/schema) shape:
+Официальная форма [`CallToolResult`](https://modelcontextprotocol.io/specification/2025-11-25/schema):
 
 ```ts
 interface CallToolResult {
@@ -60,9 +60,9 @@ interface CallToolResult {
 }
 ```
 
-Spec is explicit: *errors originating from the tool itself* must be reported inside result with `isError: true`, **not** as JSON-RPC protocol error — protocol errors are invisible to model, and LLM needs to see error to self-correct. Protocol errors are reserved for "tool not found" or "server doesn't support tool calls."
+Спецификация явна: *ошибки, исходящие от самого инструмента*, должны сообщаться внутри результата с `isError: true`, **не** как протокольная ошибка JSON-RPC — протокольные ошибки невидимы модели, а LLM нужно увидеть ошибку, чтобы самокорректироваться. Протокольные ошибки зарезервированы для «tool not found» или «сервер не поддерживает вызовы инструментов».
 
-Well-structured tool failure:
+Хорошо структурированный сбой инструмента выглядит так:
 
 ```json
 {
@@ -81,9 +81,9 @@ Well-structured tool failure:
 }
 ```
 
-Compare that to anti-pattern — `{ "isError": true, "content": [{ "type": "text", "text": "Operation failed" }] }` — which forces agent to either retry blindly or give up.
+Сравните с анти-паттерном — `{ "isError": true, "content": [{ "type": "text", "text": "Operation failed" }] }` — который вынуждает агента либо повторять вслепую, либо сдаваться.
 
-### Retryable vs non-retryable decision tree
+### Дерево решений retryable vs non-retryable
 
 ```
 isError === true ?
@@ -99,27 +99,27 @@ isError === true ?
           → surface customerMessage; stop; do NOT retry
 ```
 
-Structured metadata делает это дерево executable. Без `errorCategory` and `isRetryable` agent has to *guess* whether failure is worth retrying, which is largest cause of "tool storm" runaway loops.
+Структурированные метаданные делают это дерево исполнимым. Без `errorCategory` и `isRetryable` агенту приходится *гадать*, стоит ли сбой повторной попытки, и это главная причина «tool storm» — раскрученных циклов.
 
-### Subagent local recovery vs coordinator escalation
+### Локальное восстановление у субагента vs эскалация к координатору
 
-Subagent owns local recovery for transient failures — retry with backoff, fall back to secondary endpoint, serve stale cached read — and only escalates upward when error class is non-retryable *or* local retry budget exhausted. When it escalates, it returns structured envelope including final `errorCategory`/`isRetryable`, description for coordinator logs, **partial results** gathered before failure, and **what was attempted** (which endpoints, how many retries), so coordinator doesn't repeat work.
+Субагент отвечает за локальное восстановление при transient-сбоях — повтор с backoff, переход на резервный endpoint, выдача устаревшего кэшированного чтения — и эскалирует наверх только тогда, когда класс ошибки не подлежит повтору *или* локальный бюджет повторов исчерпан. Когда он эскалирует, он возвращает структурированный конверт, включающий итоговые `errorCategory`/`isRetryable`, описание для логов координатора, **частичные результаты**, собранные до сбоя, и **что было предпринято** (какие endpoint-ы, сколько повторов), чтобы координатор не повторял работу.
 
-Critically, *valid empty result* (например, "no orders match this filter") is **not** an error. Conflating "I couldn't run the query" with "query returned zero rows" causes coordinator to retry needlessly or misreport state to user.
+Важно: *валидный пустой результат* (например, «no orders match this filter») — **не** ошибка. Смешение «я не смог выполнить запрос» с «запрос вернул ноль строк» приводит к тому, что координатор зря повторяет операцию или некорректно сообщает состояние пользователю.
 
-## MCP server configuration in Claude Code
+## Конфигурация MCP-сервера в Claude Code
 
-### Scopes: local / project / user
+### Области видимости: local / project / user
 
-[Claude Code's MCP docs](https://docs.claude.com/en/docs/claude-code/mcp) define three scopes:
+[Документация Claude Code по MCP](https://docs.claude.com/en/docs/claude-code/mcp) определяет три области видимости:
 
-| Scope | Storage | Shared via git? | Use for |
+| Область | Хранилище | Делится через git? | Для чего использовать |
 | --- | --- | --- | --- |
-| `local` (default) | `~/.claude.json`, keyed to current project path | No | Personal/experimental servers in one project, secrets you don't want shared |
-| `project` | `.mcp.json` at repo root | **Yes** | Team-shared tooling (Jira, internal APIs, team's deploy bot) |
-| `user` | `~/.claude.json`, cross-project | No | Personal utilities you want everywhere (your scratch DB, notes server) |
+| `local` (по умолчанию) | `~/.claude.json`, привязано к пути текущего проекта | Нет | Личные/экспериментальные серверы в одном проекте, секреты, которыми не хочется делиться |
+| `project` | `.mcp.json` в корне репозитория | **Да** | Командные инструменты (Jira, внутренние API, бот деплоя команды) |
+| `user` | `~/.claude.json`, общие для всех проектов | Нет | Личные утилиты, которые нужны везде (ваша scratch-БД, ваш сервер заметок) |
 
-Add with CLI:
+Добавление через CLI:
 
 ```bash
 claude mcp add --scope project --transport http jira https://mcp.atlassian.com/v1/sse
@@ -127,11 +127,11 @@ claude mcp add --scope user    --transport stdio notes -- npx -y @me/notes-mcp
 claude mcp add --scope local   --transport stdio scratch -- python ./scratch_server.py
 ```
 
-When same server name exists at multiple scopes, **local wins, then project, then user**, then plugin-provided servers, then `claude.ai` connectors. This precedence lets developer override team-shared config locally without editing `.mcp.json`.
+Когда одно и то же имя сервера существует в нескольких областях, **побеждает local, затем project, затем user**, затем серверы плагинов, затем коннекторы `claude.ai`. Эта приоритетность позволяет разработчику локально переопределить общекомандную конфигурацию, не редактируя `.mcp.json`.
 
-### `.mcp.json` schema (with example)
+### Схема `.mcp.json` (с примером)
 
-Project-scoped `.mcp.json` lives at repo root and is checked in. Minimal schema:
+`.mcp.json` уровня проекта лежит в корне репозитория и коммитится. Минимальная схема:
 
 ```json
 {
@@ -160,66 +160,66 @@ Project-scoped `.mcp.json` lives at repo root and is checked in. Minimal schema:
 }
 ```
 
-Each entry's `type` is one of `stdio`, `http` (alias `streamable-http`), or `sse`. For `stdio` supply `command` + optional `args` and `env`. For `http`/`sse` supply `url` and optional `headers`. Project-scoped servers prompt for user approval first time a session loads them (reset with `claude mcp reset-project-choices`).
+У каждой записи `type` — один из `stdio`, `http` (алиас `streamable-http`) или `sse`. Для `stdio` указывайте `command` плюс опциональные `args` и `env`. Для `http`/`sse` указывайте `url` и опциональные `headers`. Серверы уровня проекта при первой загрузке сессии запрашивают подтверждение пользователя (сбрасывается через `claude mcp reset-project-choices`).
 
-### Environment variable expansion
+### Подстановка переменных окружения
 
-Claude Code expands two forms inside `.mcp.json`:
+Claude Code расширяет внутри `.mcp.json` две формы:
 
-- `${VAR}` — value of `VAR`; **fails to parse** if unset
-- `${VAR:-default}` — value of `VAR` if set, else `default`
+- `${VAR}` — значение `VAR`; **парсинг падает**, если переменная не задана
+- `${VAR:-default}` — значение `VAR`, если задано, иначе `default`
 
-Expansion works in `command`, `args`, `env`, `url`, and `headers`. Recommended pattern: commit `.mcp.json` with `${GITHUB_TOKEN}` placeholders and keep real tokens in each developer's shell, CI runner, or 1Password CLI. Gotcha: `${CLAUDE_PROJECT_DIR}` is set in the *server's* environment, not Claude Code's — referencing it in top-level `command` or `args` typically needs `${CLAUDE_PROJECT_DIR:-.}` as default.
+Подстановка работает в `command`, `args`, `env`, `url` и `headers`. Рекомендуемый паттерн: коммитить `.mcp.json` с плейсхолдерами `${GITHUB_TOKEN}` и держать реальные токены в shell каждого разработчика, в CI-раннере или в 1Password CLI. Тонкость: `${CLAUDE_PROJECT_DIR}` устанавливается в окружении *сервера*, а не самого Claude Code — для использования на верхнем уровне `command` или `args` обычно нужен дефолт `${CLAUDE_PROJECT_DIR:-.}`.
 
-### Verifying connection (`/mcp` command)
+### Проверка подключения (`/mcp`)
 
-Inside Claude Code, `/mcp` lists every connected server, count of tools/resources/prompts it advertises, auth state, and reconnection backoff in progress. HTTP/SSE servers auto-reconnect up to five times with exponential backoff; stdio servers, being local subprocesses, do not. `/mcp` is also where you run OAuth flow for remote servers that return `401`/`403` with `WWW-Authenticate` header.
+Внутри Claude Code `/mcp` выводит список каждого подключённого сервера, количество объявленных им инструментов/ресурсов/промптов, состояние аутентификации и любой текущий backoff на переподключение. HTTP/SSE-серверы автоматически переподключаются до пяти раз с экспоненциальным backoff; stdio-серверы, будучи локальными подпроцессами, — нет. `/mcp` также то место, где запускают OAuth-флоу для удалённых серверов, возвращающих `401`/`403` с заголовком `WWW-Authenticate`.
 
-## MCP tools vs MCP resources
+## MCP-инструменты vs MCP-ресурсы
 
-### When to model something as a tool
+### Когда моделировать как инструмент
 
-Tools are **model-controlled** and may have side effects. Use tool when agent must *decide* to do something:
+Инструменты **управляются моделью** и могут иметь побочные эффекты. Используйте инструмент, когда агент должен *решать*, делать ли что-то:
 
 - `create_jira_issue`, `update_pr_status`, `run_sql(query)`, `send_slack_message`
-- Anything that mutates state, calls external API, or requires arguments model must reason about
+- Всё, что меняет состояние, вызывает внешний API или требует аргументов, о которых модель должна рассуждать
 
-### When to model it as a resource
+### Когда моделировать как ресурс
 
-Resources are **application-controlled**, read-only, identified by URIs, and ideally cacheable. Use resource when agent benefits from *passive context* without having to ask for it:
+Ресурсы **управляются приложением**, доступны только для чтения, идентифицируются URI и идеально кэшируются. Используйте ресурс, когда агент выигрывает от *пассивного контекста*, не запрашивая его:
 
-- Directory of every open Jira ticket in current sprint → `jira://sprints/current/issues`
-- Postgres schema of orders database → `postgres://schema/public/orders`
-- Contents of a runbook or design doc → `confluence://pages/12345`
+- Каталог всех открытых тикетов Jira в текущем спринте → `jira://sprints/current/issues`
+- Схема Postgres для базы заказов → `postgres://schema/public/orders`
+- Содержимое runbook или design-doc → `confluence://pages/12345`
 
-Because resources are URI-addressable and don't move state, they cost less in retries and are friendlier to caching than wrapping same data as tool call.
+Поскольку ресурсы адресуются URI и не меняют состояние, они дешевле в повторах и дружелюбнее к кэшированию, чем те же данные, обёрнутые в вызов инструмента.
 
-### Examples (issue catalog, schema introspection)
+### Примеры (каталог тикетов, интроспекция схемы)
 
-Guide's "content catalog" pattern: instead of forcing agent to call `list_issues` then `get_issue` for each match (exploratory N+1), server exposes `issues://summary` resource that host can attach automatically. Agent sees catalog in context and jumps directly to relevant `get_issue` call. Same idea applies to schema introspection — exposing `db://schema` as resource turns "what columns does `orders` have?" into zero-tool-call answer.
+Паттерн руководства «content catalog»: вместо того чтобы вынуждать агента вызывать `list_issues`, а затем `get_issue` для каждого совпадения (исследовательский N+1), сервер выставляет ресурс `issues://summary`, который хост может прикрепить автоматически. Агент видит каталог в контексте и сразу делает релевантный вызов `get_issue`. Та же идея применима к интроспекции схемы — выставление `db://schema` как ресурса превращает вопрос «какие столбцы у `orders`?» в ответ без единого вызова инструмента.
 
-## Picking community vs custom servers
+## Выбор community vs кастомных серверов
 
-### When to build your own
+### Когда писать свой
 
-Build custom MCP server only when integration is **team-specific** and no maintained community option exists: internal microservice, deploy pipeline, homegrown CRM. Cost of custom server is not code — it's ongoing maintenance: schema drift, auth refresh, transport upgrades, security review.
+Создавайте кастомный MCP-сервер только когда интеграция **специфична для команды** и нет поддерживаемого community-варианта: внутренний микросервис, ваш конвейер деплоя, самописная CRM. Стоимость кастомного сервера — не сам код, а постоянное обслуживание: дрейф схемы, обновление аутентификации, апгрейды транспорта, security-ревью.
 
-### Popular servers worth knowing
+### Популярные серверы, которые стоит знать
 
-The [`modelcontextprotocol/servers`](https://github.com/modelcontextprotocol/servers) repo holds reference implementations and links to official [MCP Registry](https://registry.modelcontextprotocol.io/). Names worth remembering: **Filesystem** (sandboxed file ops), **Fetch** (URL → LLM-friendly text), **Git**, **Memory** (knowledge-graph persistence), **Sequential Thinking**, plus vendor-hosted **GitHub** (`api.githubcopilot.com/mcp`), **Postgres**, **Slack**, **Sentry**, **Notion**, **Atlassian/Jira**, **Stripe**, **PayPal**, **HubSpot**, **Asana**, and **Playwright**. Community directories ([mcpforge.org](https://www.mcpforge.org/directory), [mcpindex.net](https://mcpindex.net/), [mcpdir.dev](https://mcpdir.dev/)) catalog thousands more, but official registry is source of truth for provenance.
+Репозиторий [`modelcontextprotocol/servers`](https://github.com/modelcontextprotocol/servers) содержит эталонные реализации и ссылки на официальный [MCP Registry](https://registry.modelcontextprotocol.io/). Имена, которые стоит запомнить: **Filesystem** (файловые операции в песочнице), **Fetch** (URL → текст для LLM), **Git**, **Memory** (хранилище в виде графа знаний), **Sequential Thinking**, плюс хостинг от вендоров — **GitHub** (`api.githubcopilot.com/mcp`), **Postgres**, **Slack**, **Sentry**, **Notion**, **Atlassian/Jira**, **Stripe**, **PayPal**, **HubSpot**, **Asana** и **Playwright**. Community-каталоги ([mcpforge.org](https://www.mcpforge.org/directory), [mcpindex.net](https://mcpindex.net/), [mcpdir.dev](https://mcpdir.dev/)) перечисляют тысячи других, но официальный реестр — источник истины по происхождению.
 
-Final skill called out by guide: **enhance MCP tool descriptions**. If Jira MCP tool says "search Jira" while built-in `Grep` is described in vivid detail, model will reach for `Grep` against local cache instead. Tool descriptions are model's only signal for tool choice — write them like docstring of a function the model has never seen.
+Последний навык, который выделяет руководство: **усиливать описания MCP-инструментов**. Если ваш Jira MCP-инструмент описан как «search Jira», а встроенный `Grep` — описан подробно и живо, модель потянется за `Grep` по локальному кэшу. Описания инструментов — единственный сигнал модели для выбора инструмента; пишите их как docstring функции, которую модель ни разу не видела.
 
-## Exam-style focus points
+## Экзаменационные акценты
 
-- `isError: true` lives inside `CallToolResult`, **not** as JSON-RPC error — because model must *see* failure to recover.
-- Always include `errorCategory` and `isRetryable` in `structuredContent`; "Operation failed" is canonical wrong answer.
-- Distinguish access failures from empty results; `isError: false` with empty `content` is valid common case.
-- `.mcp.json` is project-scoped and committed; `~/.claude.json` is local/user-scoped and private.
-- `${VAR}` and `${VAR:-default}` expansion is for keeping secrets out of git, not runtime config logic.
-- Tools = model-controlled, side-effectful; Resources = application-controlled, read-only, URI-addressable.
-- Prefer community servers; custom servers exist for team-specific workflows only.
-- Subagents recover transient errors locally; only non-recoverable errors (with partial results and attempt log) propagate to coordinator.
+- `isError: true` живёт внутри `CallToolResult`, **а не** как ошибка JSON-RPC — модель обязана *увидеть* сбой, чтобы восстановиться.
+- Всегда включайте `errorCategory` и `isRetryable` в `structuredContent`; «Operation failed» — канонический неправильный ответ.
+- Отличайте сбой доступа от пустого результата; `isError: false` с пустым `content` — валидный, обычный случай.
+- `.mcp.json` — это область проекта и коммитится; `~/.claude.json` — local/user-область и приватный.
+- Подстановка `${VAR}` и `${VAR:-default}` — для удержания секретов вне git, а не для рантайм-логики конфигурации.
+- Инструменты = управляются моделью, с побочными эффектами; ресурсы = управляются приложением, только для чтения, адресуются URI.
+- Предпочитайте community-серверы; кастомные существуют только для команд-специфичных процессов.
+- Субагенты восстанавливаются от transient-ошибок локально; только неустранимые ошибки (с частичными результатами и журналом попыток) поднимаются к координатору.
 
 ## References
 

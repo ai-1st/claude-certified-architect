@@ -1,31 +1,31 @@
 ---
-title: "Раздел 2 — Agentic Loops и обработка stop_reason"
-linkTitle: "2. Agentic Loops"
+title: "Раздел 2 — Агентные циклы и обработка stop_reason"
+linkTitle: "2. Агентные циклы"
 weight: 2
-description: "Domain 1.1 — control flow agentic loop, значения stop_reason, которые нужно знать, и канонические анти-паттерны."
+description: "Домен 1.1 — поток управления агентного цикла, значения stop_reason, которые нужно знать, и канонические анти-паттерны."
 ---
 
 ## Что покрывает этот раздел
 
-Как строить центральный control flow Claude agent: отправить request, проверить `stop_reason`, выполнить tools, которые запросил Claude, добавить results в history и повторить. Каждый higher-level pattern (orchestrator-workers, subagents, evaluator-optimizer, Agent SDK) строится поверх этого loop.
+Как строить центральный поток управления агента Claude: отправить запрос, проверить `stop_reason`, выполнить инструменты, которые запросил Claude, добавить результаты в историю и повторить. Каждый паттерн более высокого уровня (оркестратор–воркеры, субагенты, оценщик–оптимизатор, Agent SDK) строится поверх этого цикла.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
 ### Требуемые знания
 
-- Lifecycle agentic loop: отправить request в Claude, проверить `stop_reason` (`"tool_use"` vs `"end_turn"`), выполнить requested tools, вернуть results для следующей iteration.
-- Как tool results добавляются в conversation history, чтобы model могла рассуждать о следующем action.
-- Различие между **model-driven decision-making** (Claude рассуждает, какой tool вызвать дальше на основе context) и **pre-configured decision trees** (developer hardcodes tool sequence).
+- Жизненный цикл агентного цикла: отправить запрос в Claude, проверить `stop_reason` (`"tool_use"` vs `"end_turn"`), выполнить запрошенные инструменты, вернуть результаты для следующей итерации.
+- Как результаты инструментов добавляются в историю диалога, чтобы модель могла рассуждать о следующем действии.
+- Различие между **принятием решений моделью** (Claude рассуждает, какой инструмент вызвать дальше, исходя из контекста) и **предварительно сконфигурированными деревьями решений** (разработчик жёстко прописывает последовательность инструментов).
 
 ### Требуемые навыки
 
-- Реализовать control flow agentic loop, который продолжается, пока `stop_reason == "tool_use"`, и завершается, когда `stop_reason == "end_turn"`.
-- Добавлять tool results в conversation context между iterations, чтобы model могла включать новую информацию в reasoning.
-- Избегать анти-паттернов: parsing natural language signals для завершения loop, использование arbitrary iteration caps как основного stop mechanism или проверка assistant text content как completion indicator.
+- Реализовать поток управления агентного цикла, который продолжается, пока `stop_reason == "tool_use"`, и завершается, когда `stop_reason == "end_turn"`.
+- Добавлять результаты инструментов в контекст диалога между итерациями, чтобы модель могла включать новую информацию в свои рассуждения.
+- Избегать анти-паттернов: разбор естественноязыковых сигналов для завершения цикла, использование произвольного ограничения итераций как основного механизма останова или проверка текстового содержимого ассистента как индикатора завершения.
 
-## Agentic loop от начала до конца
+## Агентный цикл от начала до конца
 
-Рабочее определение agent у Anthropic — самое простое в отрасли: *"LLMs autonomously using tools in a loop."* Augmented LLM (model + tools + retrieval + memory) — базовый building block; каждый workflow pattern (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) составлен из него.
+Рабочее определение агента у Anthropic — самое простое в отрасли: *"LLMs autonomously using tools in a loop."* Расширенная LLM (модель + инструменты + поиск + память) — базовый строительный блок; каждый паттерн рабочего процесса (последовательность промптов, маршрутизация, параллелизация, оркестратор–воркеры, оценщик–оптимизатор) собирается из него.
 
 ```text
   ┌──────────────────────────────────────────────────────────────┐
@@ -53,36 +53,36 @@ description: "Domain 1.1 — control flow agentic loop, значения stop_re
   └───────────────────────────┘
 ```
 
-Один iteration выглядит так:
+Разбор одной итерации:
 
-1. Отправьте `messages` плюс `tools` schema в `POST /v1/messages`.
-2. Claude возвращает `assistant` message. Его `content` — list of blocks: zero or more `text` blocks и zero or more `tool_use` blocks. Top-level `stop_reason` суммирует, почему generation остановилась.
-3. Если `stop_reason == "tool_use"`: добавьте assistant turn verbatim, выполните каждый requested tool, добавьте один новый `user` turn, где content — list of `tool_result` blocks (по одному на `tool_use_id`), и снова вызовите API с updated history.
-4. Если `stop_reason == "end_turn"`: model решила, что task finished. Return.
+1. Отправьте `messages` плюс схему `tools` на `POST /v1/messages`.
+2. Claude возвращает сообщение от `assistant`. Его `content` — список блоков: ноль или больше блоков `text` и ноль или больше блоков `tool_use`. Верхнеуровневый `stop_reason` обобщает, почему генерация остановилась.
+3. Если `stop_reason == "tool_use"`: добавьте ход ассистента дословно, выполните каждый запрошенный инструмент, добавьте один новый ход от `user`, чьё содержимое — список блоков `tool_result` (по одному на `tool_use_id`), и снова вызовите API с обновлённой историей.
+4. Если `stop_reason == "end_turn"`: модель решила, что задача завершена. Возвращаемся.
 
-Tool results **добавляются в conversation history**, а не summary-away. Каждый новый request несет всю history, поэтому Claude может chain reasoning across many turns. Model — не ваш code — решает, какой tool вызвать дальше, исходя из observed context. Это различие между **model-driven decision-making** (Claude выбирает tool N+1 из running context) и **pre-configured decision trees** (ваш code статически вызывает `tool_a()` → `tool_b()` → `tool_c()`). Decision trees — это workflows; agentic loops — agents. Опубликованная guidance Anthropic рекомендует предпочитать более простой workflow, когда path можно hardcode.
+Результаты инструментов **добавляются в историю диалога**, а не отбрасываются после суммирования. Каждый новый запрос несёт всю историю целиком, поэтому Claude может выстраивать рассуждения через множество ходов. Модель — а не ваш код — решает, какой инструмент вызвать следующим, исходя из того, что она наблюдает. Это и есть различие между **принятием решений моделью** (Claude выбирает инструмент N+1 из текущего контекста) и **предварительно сконфигурированными деревьями решений** (ваш код статически вызывает `tool_a()` → `tool_b()` → `tool_c()`). Деревья решений — это рабочие процессы; агентные циклы — это агенты. Опубликованные рекомендации Anthropic предписывают предпочитать более простой рабочий процесс всегда, когда путь можно жёстко прописать.
 
 ## Значения stop_reason, которые нужно знать
 
-`stop_reason` входит в каждый successful Messages API response. Это единственный signal, по которому следует branch, чтобы решить, продолжать ли loop. Полный набор documented values ниже.
+`stop_reason` присутствует в каждом успешном ответе Messages API. Это единственный сигнал, по которому следует разветвлять решение, продолжать ли цикл. Полный набор задокументированных значений приведён ниже.
 
-| Значение | Смысл | Что должен делать loop |
+| Значение | Смысл | Что должен делать ваш цикл |
 | --- | --- | --- |
-| `end_turn` | Claude естественно завершил response. | Выйти из loop. Вернуть `response.content` text blocks caller. |
-| `tool_use` | Response содержит один или несколько `tool_use` blocks; Claude ожидает, что вы их выполните. | Добавить assistant turn, выполнить каждый `tool_use` block, добавить `user` turn с соответствующими `tool_result` blocks (используйте тот же `tool_use_id`) и снова вызвать API. |
-| `max_tokens` | Output достиг параметра `max_tokens`. Response truncated и может содержать **incomplete** `tool_use` block. | Обнаружьте mid-tool-call truncation, проверив, что last content block's `type == "tool_use"`; retry с большим `max_tokens`. Иначе запросите continuation или покажите truncation warning. |
-| `stop_sequence` | Output совпал с custom string в `stop_sequences`. Matched sequence находится в `response.stop_sequence`. | Считать successful terminal stop для этого pattern. Продолжить или finalize в зависимости от protocol. |
-| `pause_turn` | Server-side sampling loop достиг своего iteration cap при работе с **server tools** (web search, web fetch, code execution и т. д.). Response может содержать `server_tool_use` block без matching `server_tool_result`. | Добавить assistant response **unchanged** и снова вызвать API с теми же tools. Повторять до non-`pause_turn` stop reason. |
-| `refusal` | Model отказалась по safety reasons (Sonnet 4.5+ / Opus 4.1+ API safety filter). | Не loop. Показать refusal caller; optionally rephrase, route to a different model (например, Haiku 4.5), or escalate. |
-| `model_context_window_exceeded` | Generation остановилась, потому что response достиг полного context window model (не `max_tokens`). Sonnet 4.5+ by default; earlier models need a beta header. | Обрабатывать похоже на `max_tokens` — response valid but capped. Continue, summarize или compact context. |
+| `end_turn` | Claude естественно завершил ответ. | Выйти из цикла. Вернуть вызывающему коду блоки `text` из `response.content`. |
+| `tool_use` | Ответ содержит один или несколько блоков `tool_use`; Claude ожидает, что вы их выполните. | Добавить ход ассистента, выполнить каждый блок `tool_use`, добавить ход от `user` с соответствующими блоками `tool_result` (используйте тот же `tool_use_id`) и снова вызвать API. |
+| `max_tokens` | Вывод достиг параметра `max_tokens`. Ответ обрезан и может содержать **неполный** блок `tool_use`. | Обнаружьте обрезание в середине вызова инструмента, проверив, что у последнего блока содержимого `type == "tool_use"`; повторите запрос с большим `max_tokens`. Иначе запросите продолжение или покажите предупреждение об обрезании. |
+| `stop_sequence` | Вывод совпал с пользовательской строкой из `stop_sequences`. Совпавшая последовательность находится в `response.stop_sequence`. | Считать это успешным терминальным остановом для данного паттерна. Продолжить или завершить в зависимости от вашего протокола. |
+| `pause_turn` | Серверный цикл сэмплирования достиг своего ограничения итераций при работе с **серверными инструментами** (web search, web fetch, code execution и т. п.). Ответ может содержать блок `server_tool_use` без соответствующего `server_tool_result`. | Добавить ответ ассистента **без изменений** и снова вызвать API с теми же инструментами. Повторять до тех пор, пока не получите stop reason, отличный от `pause_turn`. |
+| `refusal` | Модель отказалась по соображениям безопасности (фильтр безопасности API в Sonnet 4.5+ / Opus 4.1+). | Не зацикливаться. Показать отказ вызывающему коду; при необходимости перефразировать, перенаправить на другую модель (например, Haiku 4.5) или эскалировать. |
+| `model_context_window_exceeded` | Генерация остановилась, потому что ответ достиг полного контекстного окна модели (а не `max_tokens`). По умолчанию в Sonnet 4.5+; более ранним моделям нужен бета-заголовок. | Обрабатывать аналогично `max_tokens` — ответ корректен, но ограничен. Продолжить, суммировать или сжать контекст. |
 
-Branching по `stop_reason` — **единственный** корректный termination test. Не parse text вроде "I'm done" или "Final answer:" — это канонический анти-паттерн ниже.
+Ветвление по `stop_reason` — **единственный** корректный тест завершения. Не разбирайте текст вида "I'm done" или "Final answer:" — это канонический анти-паттерн, упомянутый ниже.
 
-## Reference implementations
+## Эталонные реализации
 
-### Python — raw Messages API loop
+### Python — сырой цикл на Messages API
 
-Минимальная runnable shape на `anthropic` Python SDK (тот же loop pattern, который Anthropic показывает в [docs](https://docs.anthropic.com/en/docs/build-with-claude/handling-stop-reasons#handling-tool-use-workflows)).
+Минимальная исполняемая форма с использованием Python SDK `anthropic` (тот же паттерн цикла, который Anthropic показывает в [своей документации](https://docs.anthropic.com/en/docs/build-with-claude/handling-stop-reasons#handling-tool-use-workflows)).
 
 ```python
 from anthropic import Anthropic
@@ -128,11 +128,11 @@ def agent_loop(user_prompt: str) -> str:
         raise RuntimeError(f"unhandled stop_reason: {resp.stop_reason}")
 ```
 
-Notes: assistant turn добавляется **verbatim** (`tool_use` blocks должны сохраниться в history). Tool results возвращаются в одном `user` message, где `content` — **list** of `tool_result` blocks, по одному на `tool_use_id`. `pause_turn` требует re-sending assistant content unchanged; не synthesize tool result.
+Замечания: ход ассистента добавляется **дословно** (блоки `tool_use` должны сохраниться в истории). Результаты инструментов возвращаются в одном сообщении от `user`, чей `content` — это **список** блоков `tool_result`, по одному на `tool_use_id`. `pause_turn` требует повторной отправки содержимого ассистента без изменений; не синтезируйте результат инструмента сами.
 
 ### TypeScript — Claude Agent SDK
 
-Для higher-level [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/agent-loop) Anthropic (`@anthropic-ai/claude-agent-sdk`) loop уже реализован. Вы потребляете async stream typed messages и проверяете terminal `ResultMessage`.
+Для более высокоуровневого [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/agent-loop) от Anthropic (`@anthropic-ai/claude-agent-sdk`) цикл уже реализован за вас. Вы потребляете асинхронный поток типизированных сообщений и проверяете терминальный `ResultMessage`.
 
 ```typescript
 import { query } from "@anthropic-ai/claude-agent-sdk";
@@ -162,35 +162,35 @@ for await (const message of stream) {
 }
 ```
 
-SDK internally запускает тот же `stop_reason`-driven loop: Claude evaluates, requests tools, SDK executes them, results feed back automatically, и один полный Claude turn + tool execution — это то, что SDK называет *turn*. Loop заканчивается, когда Claude produces assistant message без `tool_use` blocks. `maxTurns` и `maxBudgetUsd` — **guardrails**, а не primary stop mechanism; при срабатывании они дают `ResultMessage` с subtype `error_max_turns` или `error_max_budget_usd`.
+Внутри SDK запускает тот же цикл, управляемый `stop_reason`: Claude рассуждает, запрашивает инструменты, SDK их выполняет, результаты автоматически возвращаются обратно, и один полный ход Claude плюс выполнение инструментов — это то, что SDK называет *ходом*. Цикл заканчивается, когда Claude выдаёт сообщение ассистента без блоков `tool_use`. `maxTurns` и `maxBudgetUsd` — это **предохранители**, а не основной механизм останова; при срабатывании они выдают `ResultMessage` с подтипом `error_max_turns` или `error_max_budget_usd`.
 
 ## Анти-паттерны, которых нужно избегать
 
-- **Parsing natural-language signals to terminate the loop.** Поиск "Final answer:" или "DONE" в `response.content` brittle — model может сформулировать completion бесконечным числом способов и все еще хотеть вызвать another tool. **Правильно:** branch only on `response.stop_reason`.
-- **Using an iteration cap as the primary stopping mechanism.** Hardcoding `for _ in range(10):` и выход по cap означает, что вы terminate mid-task на сложных задачах и тратите tokens на легких. **Правильно:** пусть `stop_reason == "end_turn"` завершает loop; держите iteration caps и `max_budget_usd` только как safety guardrails.
-- **Checking assistant text content to decide completion.** Turn может содержать *both* `text` and `tool_use` blocks at once (Claude может narrate while requesting a tool). Treating "has text" as "done" drops tool calls. **Правильно:** inspect `stop_reason`; iterate over content blocks by `type`.
-- **Dropping the assistant turn when you append tool results.** Sending tool results without first appending assistant `tool_use` turn produces invalid `messages` array and API error. **Правильно:** append assistant turn verbatim, then append a single user turn of `tool_result` blocks.
-- **Adding extra text after `tool_result` blocks.** Trailing `text` blocks in the same user turn teach Claude to expect user text after every tool call, causing empty `end_turn` responses. **Правильно:** user turn после `tool_use` должен содержать только `tool_result` blocks.
-- **Ignoring `pause_turn`.** С server tools server hits its own 10-iteration cap and returns `pause_turn` with no `tool_result` for you to produce. Treating this like `end_turn` truncates agent. **Правильно:** append assistant response unchanged and call again.
-- **Ignoring `max_tokens` truncation inside a `tool_use` block.** If `stop_reason == "max_tokens"` and the last block is `tool_use`, JSON input incomplete and retrying with the same limit fails again. **Правильно:** detect the case and retry with a higher `max_tokens`.
-- **Hardcoding the tool sequence.** Calling `read_file → search → write_file` from your own code with no model-in-the-loop reasoning is a **workflow**, not an agent. Fine when the path is known — but don't expect it to recover from novel inputs.
+- **Разбор естественноязыковых сигналов для завершения цикла.** Поиск "Final answer:" или "DONE" в `response.content` хрупок — модель может сформулировать завершение бесконечным числом способов и всё равно захотеть вызвать ещё один инструмент. **Правильно:** ветвиться только по `response.stop_reason`.
+- **Использование ограничения итераций как основного механизма останова.** Жёсткое `for _ in range(10):` и выход по достижении предела означают, что вы прервёте работу в середине задачи на сложных запросах и потратите токены на простых. **Правильно:** пусть цикл завершает `stop_reason == "end_turn"`; держите ограничения итераций и `max_budget_usd` только как защитные предохранители.
+- **Проверка текстового содержимого ассистента для решения о завершении.** Один ход может содержать *одновременно* блоки `text` и `tool_use` (Claude может комментировать, одновременно запрашивая инструмент). Трактовка "есть текст" как "готово" приводит к потере вызовов инструментов. **Правильно:** проверяйте `stop_reason`; итерируйте по блокам содержимого по их `type`.
+- **Отбрасывание хода ассистента при добавлении результатов инструментов.** Отправка результатов инструментов без предварительного добавления хода ассистента с `tool_use` приводит к некорректному массиву `messages` и ошибке API. **Правильно:** добавляйте ход ассистента дословно, затем один ход от пользователя с блоками `tool_result`.
+- **Добавление дополнительного текста после блоков `tool_result`.** Хвостовые блоки `text` в том же ходе от пользователя приучают Claude ожидать пользовательский текст после каждого вызова инструмента, что приводит к пустым ответам с `end_turn`. **Правильно:** ход пользователя после `tool_use` должен содержать только блоки `tool_result`.
+- **Игнорирование `pause_turn`.** При работе с серверными инструментами сервер достигает собственного ограничения в 10 итераций и возвращает `pause_turn` без `tool_result`, который вы могли бы предоставить. Трактовка этого как `end_turn` обрывает агента. **Правильно:** добавьте ответ ассистента без изменений и вызовите API снова.
+- **Игнорирование обрезания по `max_tokens` внутри блока `tool_use`.** Если `stop_reason == "max_tokens"` и последний блок — `tool_use`, JSON-вход неполон, и повтор с тем же лимитом снова провалится. **Правильно:** обнаружьте этот случай и повторите запрос с большим `max_tokens`.
+- **Жёстко прописанная последовательность инструментов.** Вызовы `read_file → search → write_file` из вашего собственного кода без участия модели в рассуждении — это **рабочий процесс**, а не агент. Это нормально, когда путь известен, — но не ждите от него восстановления на новых входах.
 
-## Exam-style focus points
+## Точки фокусировки в стиле экзамена
 
-- По заданному `stop_reason` определить correct loop action (continue with tool results, append-and-resend for `pause_turn`, exit on `end_turn`, retry-with-larger-budget on `max_tokens` mid-tool, surface refusal).
-- Определить, какие mutations `messages` нужны между iterations: append assistant turn verbatim (including `tool_use` blocks), then append user turn of `tool_result` blocks keyed by `tool_use_id`.
-- Отличать model-driven decision-making от pre-configured decision trees и выбирать правильный pattern для описанной task (open-ended task = agent; well-defined fixed path = workflow).
-- Находить anti-patterns в code sample: text-parsing for completion, iteration-cap-as-stop, missing assistant turn, extra `text` blocks after `tool_result`, ignoring `pause_turn`.
-- Знать, что `max_turns` / `max_budget_usd` в Claude Agent SDK — guardrails; primary loop terminator все равно "no `tool_use` blocks in the assistant response."
+- По заданному значению `stop_reason` определить корректное действие цикла (продолжить с результатами инструментов, добавить и повторно отправить для `pause_turn`, выйти на `end_turn`, повторить с увеличенным бюджетом на `max_tokens` в середине инструмента, показать отказ).
+- Определить, какие изменения `messages` нужны между итерациями: добавить ход ассистента дословно (включая блоки `tool_use`), затем добавить ход пользователя с блоками `tool_result`, привязанными по `tool_use_id`.
+- Отличать принятие решений моделью от предварительно сконфигурированных деревьев решений и выбирать правильный паттерн для описанной задачи (открытая задача — агент; чётко определённый фиксированный путь — рабочий процесс).
+- Замечать анти-паттерны в примере кода: разбор текста для завершения, ограничение итераций как останов, отсутствующий ход ассистента, лишние блоки `text` после `tool_result`, игнорирование `pause_turn`.
+- Знать, что `max_turns` / `max_budget_usd` в Claude Agent SDK — это предохранители; основной завершитель цикла по-прежнему "нет блоков `tool_use` в ответе ассистента".
 
-## References
+## Ссылки
 
-- [Handling stop reasons — Claude API docs](https://docs.anthropic.com/en/docs/build-with-claude/handling-stop-reasons) — authoritative list of every `stop_reason` value with handling examples in Python, TypeScript, Go, Java, C#, PHP, and Ruby.
-- [Messages API reference — Create a Message](https://docs.anthropic.com/en/api/messages) — request/response schema including the `text`, `tool_use`, and `tool_result` content block types.
-- [Tool use overview](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview) — defining tools and the `tool_use` / `tool_result` exchange.
-- [Building effective agents — Anthropic Engineering (Dec 19, 2024)](https://www.anthropic.com/engineering/building-effective-agents) — canonical post defining workflows vs. agents and the augmented-LLM building block. Required reading for the exam.
-- [Effective context engineering for AI agents — Anthropic Engineering (Sep 29, 2025)](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) — restates the working definition of an agent as "LLMs autonomously using tools in a loop"; covers compaction and subagent patterns for long-horizon loops.
-- [How the agent loop works — Claude Agent SDK docs](https://code.claude.com/docs/en/agent-sdk/agent-loop) — official description of the SDK turn/message lifecycle, `max_turns`, `max_budget_usd`, and `ResultMessage` subtypes.
-- [Agent SDK reference — Python](https://code.claude.com/docs/en/sdk/sdk-python) and [TypeScript](https://code.claude.com/docs/en/sdk/sdk-typescript) — `query()` vs `ClaudeSDKClient`, message types, and the typed event stream.
-- [anthropics/claude-cookbooks — tool_use](https://github.com/anthropics/claude-cookbooks/tree/main/tool_use) — runnable examples of the loop, `tool_choice`, and programmatic tool calling.
-- [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python) and [TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) — current client shapes used in the loops above.
+- [Handling stop reasons — Claude API docs](https://docs.anthropic.com/en/docs/build-with-claude/handling-stop-reasons) — авторитетный перечень всех значений `stop_reason` с примерами обработки на Python, TypeScript, Go, Java, C#, PHP и Ruby.
+- [Messages API reference — Create a Message](https://docs.anthropic.com/en/api/messages) — схема запроса и ответа, включая типы блоков содержимого `text`, `tool_use` и `tool_result`.
+- [Tool use overview](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview) — определение инструментов и обмен `tool_use` / `tool_result`.
+- [Building effective agents — Anthropic Engineering (Dec 19, 2024)](https://www.anthropic.com/engineering/building-effective-agents) — канонический пост, определяющий различие рабочих процессов и агентов и строительный блок расширенной LLM. Обязательное чтение к экзамену.
+- [Effective context engineering for AI agents — Anthropic Engineering (Sep 29, 2025)](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) — повторяет рабочее определение агента как "LLMs autonomously using tools in a loop"; разбирает компакцию и паттерны субагентов для долгих циклов.
+- [How the agent loop works — Claude Agent SDK docs](https://code.claude.com/docs/en/agent-sdk/agent-loop) — официальное описание жизненного цикла хода и сообщения в SDK, `max_turns`, `max_budget_usd` и подтипов `ResultMessage`.
+- [Agent SDK reference — Python](https://code.claude.com/docs/en/sdk/sdk-python) и [TypeScript](https://code.claude.com/docs/en/sdk/sdk-typescript) — `query()` против `ClaudeSDKClient`, типы сообщений и типизированный поток событий.
+- [anthropics/claude-cookbooks — tool_use](https://github.com/anthropics/claude-cookbooks/tree/main/tool_use) — исполняемые примеры цикла, `tool_choice` и программного вызова инструментов.
+- [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python) и [TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) — текущие формы клиентов, используемые в циклах выше.

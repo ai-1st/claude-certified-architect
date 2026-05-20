@@ -1,67 +1,67 @@
 ---
-title: "Раздел 12 — Context Management, Escalation, Error Propagation & Provenance"
-linkTitle: "12. Context & Reliability"
+title: "Раздел 12 — Управление контекстом, эскалация, распространение ошибок и провенанс"
+linkTitle: "12. Контекст и надёжность"
 weight: 12
-description: "Domain 5 (5.1–5.6) — case-facts blocks, escalation triggers, structured error envelopes, scratchpad files и claim–source mapping."
+description: "Домен 5 (5.1–5.6) — блоки фактов по делу, триггеры эскалации, структурированные конверты ошибок, файлы-черновики и связка утверждений с источниками."
 ---
 
 ## Что покрывает этот раздел
 
-Domain 5 — самый маленький домен по raw weight, но самый cross-cutting: every other domain assumes agent keeps critical facts straight, escalates at right moment, surfaces failures usefully to coordinator, persists findings across long sessions, calibrates own confidence, and preserves where each claim came from. Six task statements map to six concrete patterns covered below. Escalation sub-domain (5.2) tests one specific judgement: distinguish legitimate escalation triggers from two unreliable proxies (sentiment, self-reported confidence). Sample Question 8 is direct test of structured error context.
+Домен 5 — самый маленький домен по сырому весу, но самый сквозной: каждый другой домен предполагает, что агент удерживает критичные факты, эскалирует в нужный момент, полезно для координатора показывает отказы, сохраняет находки между длинными сессиями, калибрует собственную уверенность и сохраняет, откуда взялось каждое утверждение. Шесть пунктов задач отображаются на шесть конкретных паттернов, разбираемых ниже. Подобласть эскалации (5.2) проверяет одно конкретное суждение: отличить легитимные триггеры эскалации от двух ненадёжных прокси (тональность, самооцениваемая уверенность). Sample Question 8 — прямая проверка структурированного контекста ошибки.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 5.1 Conversation context preservation
+### 5.1 Сохранение контекста диалога
 
-- Progressive summarization condenses numerical values, percentages, dates, and customer-stated expectations into vague paraphrases (`$487.32` → "around five hundred dollars").
-- "Lost in the middle": models reliably use information at *start* and *end* of long inputs but may omit middle content (Liu et al., reproduced for Claude in Anthropic's own long-context guidance).
-- Tool results accumulate disproportionately to relevance (40+ fields per `lookup_order` when 5 matter).
-- Conversation history must be passed in full each turn — API is stateless and trimming earlier turns silently destroys coherence.
-- Skills: extract transactional facts (amounts, dates, order numbers, statuses) into persistent "case facts" block included in every prompt outside summarized history; trim verbose tool outputs at boundary; place key findings at start of aggregated inputs with explicit section headers; require subagents to include metadata (dates, source locations, methodology) in structured outputs; have upstream agents return structured data instead of verbose reasoning chains when downstream context constrained.
+- Прогрессивная суммаризация уплотняет числовые значения, проценты, даты и ожидания, озвученные клиентом, в размытые перифразы (`$487.32` → "around five hundred dollars").
+- «Lost in the middle»: модели надёжно используют информацию в *начале* и *конце* длинного ввода, но могут опустить содержимое в середине (Liu et al., воспроизведено для Claude в собственных рекомендациях Anthropic по длинному контексту).
+- Результаты инструментов накапливаются непропорционально релевантности (40+ полей на `lookup_order`, когда важны 5).
+- История диалога должна передаваться целиком на каждом ходу — API без состояния, и обрезка ранних ходов молча разрушает связность.
+- Навыки: извлекайте транзакционные факты (суммы, даты, номера заказов, статусы) в постоянный блок «фактов по делу», включаемый в каждый промпт вне суммаризованной истории; обрезайте многословные выводы инструментов на границе; ставьте ключевые находки в начале агрегированных вводов с явными заголовками разделов; требуйте от субагентов включать метаданные (даты, расположение источника, методологию) в структурированный вывод; пусть восходящие агенты возвращают структурированные данные вместо многословных цепочек рассуждения, когда контекст ниже по конвейеру ограничен.
 
-### 5.2 Escalation & ambiguity resolution
+### 5.2 Эскалация и разрешение неоднозначности
 
-- Legitimate escalation triggers: explicit customer request for a human, policy exception or policy gap (not just "complex case"), inability to make meaningful progress, multi-match ambiguity requiring more identifiers.
-- Distinguish **immediate escalation on explicit demand** from **offering to resolve when straightforward** (acknowledge frustration, offer help, escalate only on reiteration).
-- Unreliable proxies: sentiment-based escalation (frustration ≠ complexity) and self-reported confidence (LLMs are confidently wrong on same hard cases).
-- Skills: explicit escalation criteria with few-shot examples; honor explicit human requests immediately without first investigating; escalate on policy ambiguity (competitor price-matching when policy only addresses own-site adjustments); ask for additional identifiers on multi-match results.
+- Легитимные триггеры эскалации: явный запрос клиента на человека, исключение из политики или пробел в политике (а не просто «сложный случай»), невозможность сделать осмысленный прогресс, многозначное совпадение, требующее дополнительных идентификаторов.
+- Различайте **немедленную эскалацию по явному требованию** и **предложение решить, если просто** (признать раздражение, предложить помощь, эскалировать только при повторной просьбе).
+- Ненадёжные прокси: эскалация по тональности (раздражение ≠ сложность) и самооцениваемая уверенность (LLM уверенно ошибаются на одних и тех же сложных случаях).
+- Навыки: явные критерии эскалации с few-shot примерами; уважайте явные запросы человека немедленно, не начиная сначала расследовать; эскалируйте при неоднозначности политики (price-matching конкурента, когда политика описывает только корректировки на собственном сайте); запрашивайте дополнительные идентификаторы при многозначных совпадениях.
 
-### 5.3 Error propagation in multi-agent systems
+### 5.3 Распространение ошибок в многоагентных системах
 
-- Structured error context (failure type, attempted query, partial results, alternative approaches) enables coordinator recovery decisions.
-- Distinguish access failures (timeout, permission denied — retry candidates) from valid empty results (query succeeded; nothing matched).
-- Generic statuses like `"search unavailable"` hide what coordinator needs.
-- Anti-patterns: silently suppressing errors (returning empty as success); terminating whole workflow on one subagent failure.
-- Skills: structured error envelopes; distinguish access vs empty; subagent-local recovery for transient failures with propagation only of unrecoverable ones; synthesis output with coverage annotations marking well-supported vs gap areas.
+- Структурированный контекст ошибки (тип отказа, попытанный запрос, частичные результаты, альтернативные подходы) позволяет координатору принимать решения о восстановлении.
+- Различайте отказы доступа (тайм-аут, отказ в правах — кандидаты на повтор) и валидные пустые результаты (запрос успешен; ничего не совпало).
+- Общие статусы вроде `"search unavailable"` скрывают то, что нужно координатору.
+- Антипаттерны: молчаливое подавление ошибок (возврат пустого как успеха); прерывание всего рабочего процесса из-за отказа одного субагента.
+- Навыки: структурированные конверты ошибок; различение доступа против пустого результата; локальное восстановление в субагенте для временных отказов с распространением только неустранимых; вывод синтеза с аннотациями покрытия, помечающими хорошо подкреплённые и пробельные области.
 
-### 5.4 Context in large codebase exploration
+### 5.4 Контекст при исследовании крупной кодовой базы
 
-- Context degradation: in extended sessions, models give inconsistent answers and refer to "typical patterns" rather than specific classes discovered earlier.
-- Scratchpad files persist key findings across context boundaries.
-- Subagent delegation isolates verbose exploration so main agent only sees structured summaries.
-- Structured state persistence (manifests) enables crash recovery: each agent exports state to known location; coordinator loads manifest on resume.
-- Skills: spawn subagents for specific questions ("find all test files," "trace refund-flow dependencies"); maintain scratchpad files referenced for subsequent questions; summarize before spawning next phase of subagents; design crash recovery via structured agent state exports; use `/compact` when context fills with verbose discovery output.
+- Деградация контекста: в длинных сессиях модели дают непоследовательные ответы и ссылаются на «типичные паттерны» вместо конкретных классов, обнаруженных ранее.
+- Файлы-черновики сохраняют ключевые находки через границы контекста.
+- Делегирование субагентам изолирует многословное исследование, чтобы основной агент видел только структурированные сводки.
+- Структурированная персистентность состояния (манифесты) позволяет восстановление после сбоя: каждый агент экспортирует состояние в известное место; координатор загружает манифест при возобновлении.
+- Навыки: запускайте субагентов под конкретные вопросы («найти все тестовые файлы», «трассировать зависимости refund-flow»); ведите файлы-черновики, на которые ссылаетесь в последующих вопросах; суммируйте перед запуском следующей фазы субагентов; проектируйте восстановление после сбоя через структурированные экспорты состояния агента; используйте `/compact`, когда контекст заполняется многословным исследовательским выводом.
 
-### 5.5 Human review workflows & confidence calibration
+### 5.5 Процессы человеческого ревью и калибровка уверенности
 
-- Aggregate accuracy (97% overall) can mask poor performance on specific document types or fields.
-- Stratified random sampling of high-confidence stream surfaces novel error patterns.
-- Field-level confidence scores, calibrated against labeled validation set, route review attention.
-- Validate accuracy by document type and field segment before automating high-confidence extractions.
-- Skills: stratified sampling; accuracy by document type and field; field-level confidence with calibration; route low-confidence items and ambiguous-source items to human review; prioritize limited reviewer capacity.
+- Агрегированная точность (97% в целом) может маскировать плохую работу на отдельных типах документов или полях.
+- Стратифицированная случайная выборка из потока с высокой уверенностью вытаскивает на свет новые шаблоны ошибок.
+- Уверенность на уровне поля, откалиброванная по размеченному валидационному набору, направляет внимание ревьюера.
+- Валидируйте точность по типу документа и сегменту поля до автоматизации извлечений с высокой уверенностью.
+- Навыки: стратифицированная выборка; точность по типу документа и полю; уверенность на уровне поля с калибровкой; маршрутизация элементов с низкой уверенностью и неоднозначным источником на человеческое ревью; приоритизация ограниченной ёмкости ревьюеров.
 
-### 5.6 Information provenance in multi-source synthesis
+### 5.6 Провенанс информации при синтезе из многих источников
 
-- Source attribution is destroyed by summarization unless claim–source mappings are preserved as structured data.
-- Conflicting statistics from credible sources should be annotated with both attributions, not arbitrarily resolved.
-- Temporal data needs publication/collection dates so time-series differences are not misread as contradictions.
-- Skills: subagents output structured claim–source mappings (URLs, doc names, excerpts) preserved through synthesis; reports distinguish well-established from contested findings; conflicting values explicitly annotated for coordinator to reconcile; publication/collection dates in every structured output; render content types appropriately (financial as tables, news as prose, technical as structured lists) instead of forcing uniform format.
+- Атрибуция источников разрушается суммаризацией, если связки утверждение–источник не сохранены как структурированные данные.
+- Конфликтующие статистики из достоверных источников следует аннотировать обеими атрибуциями, а не разрешать произвольно.
+- Временным данным нужны даты публикации/сбора, чтобы различия временного ряда не были прочитаны как противоречия.
+- Навыки: субагенты выдают структурированные связки утверждение–источник (URL, имена документов, фрагменты), сохраняемые через синтез; отчёты различают хорошо устоявшиеся и спорные находки; конфликтующие значения явно аннотируются для разрешения координатором; даты публикации/сбора в каждом структурированном выводе; рендерите типы контента уместно (финансовый как таблицы, новости как прозу, технический как структурированные списки) вместо принуждения к единому формату.
 
-## Six reliability patterns you must internalize
+## Шесть паттернов надёжности, которые надо усвоить
 
-### Pattern 1 — The "case facts" block
+### Паттерн 1 — Блок «фактов по делу»
 
-Lossy progressive summarization is canonical Domain 5 failure: agent rolls earlier turns into paragraph that drops order number and customer's deadline, and next turn hallucinates both. Fix is separate, structured, append-only block of transactional facts included in *every* request *outside* summarized history. Block changes only when new verified fact added — never reword facts, never let LLM rewrite block.
+Лоссовая прогрессивная суммаризация — это каноничный отказ домена 5: агент сворачивает ранние ходы в абзац, теряющий номер заказа и дедлайн клиента, а следующий ход галлюцинирует и то, и другое. Решение — отдельный, структурированный, только-добавляемый блок транзакционных фактов, включаемый в *каждый* запрос *вне* суммаризованной истории. Блок меняется только при добавлении нового верифицированного факта — никогда не переформулируйте факты, никогда не давайте LLM переписать блок.
 
 ```json
 {
@@ -76,13 +76,13 @@ Lossy progressive summarization is canonical Domain 5 failure: agent rolls earli
 }
 ```
 
-Place this at **top** of user message on every turn under `## CASE FACTS (authoritative — do not summarize)`. Two reasons: position effects (Liu et al., reproduced by Anthropic) put start-of-context tokens in high-recall region, and prompt caching keeps block hot between turns when it sits before volatile content. (Anthropic prompt caching guidance: stable content must physically precede volatile content; render order is `tools → system → messages`.)
+Размещайте это в **начале** пользовательского сообщения на каждом ходу под заголовком `## CASE FACTS (authoritative — do not summarize)`. Две причины: позиционные эффекты (Liu et al., воспроизведено Anthropic) ставят токены начала контекста в зону высокого recall, и prompt caching удерживает блок горячим между ходами, когда он стоит до любого изменчивого контента. (Рекомендации Anthropic по prompt caching: стабильный контент должен физически предшествовать изменчивому; порядок рендеринга — `tools → system → messages`.)
 
-### Pattern 2 — Trim tool outputs before they accumulate
+### Паттерн 2 — Обрезайте выводы инструментов до их накопления
 
-A single order lookup may return 40+ fields. Across 20-turn session those fields dominate context. Normalize tool outputs at agent boundary to fields downstream reasoning actually uses.
+Один lookup заказа может вернуть 40+ полей. За 20-ходовую сессию эти поля доминируют в контексте. Нормализуйте выводы инструментов на границе агента до полей, которые действительно использует нижестоящее рассуждение.
 
-Before:
+До:
 
 ```json
 { "id": "ORD-558102", "status": "delivered", "shipping_address": {...12 fields...},
@@ -91,18 +91,18 @@ Before:
   "warehouse_metadata": {...}, "carrier_tracking": [...] }
 ```
 
-After (return-flow normalization):
+После (нормализация возвратного потока):
 
 ```json
 { "id": "ORD-558102", "status": "delivered", "delivered_on": "2026-05-08",
   "total_usd": 487.32, "items_count": 3, "is_returnable": true }
 ```
 
-Anthropic's *Writing effective tools for AI agents* and *Effective context engineering for AI agents* call this "context rot": accuracy degrades as raw token count grows, so answer is curation, not bigger window. Trim inside tool wrapper — once verbose output is in history you cannot retroactively un-include it.
+Тексты Anthropic *Writing effective tools for AI agents* и *Effective context engineering for AI agents* называют это «context rot»: точность деградирует с ростом сырого числа токенов, поэтому ответ — кураторство, а не большее окно. Обрезайте внутри обёртки инструмента — как только многословный вывод попал в историю, его уже нельзя ретроактивно выкинуть.
 
-### Pattern 3 — Structured error context
+### Паттерн 3 — Структурированный контекст ошибки
 
-When subagent fails, return structured envelope, never a string. This is exact shape sample Question 8 rewards:
+Когда субагент падает, возвращайте структурированный конверт, а не строку. Это ровно та форма, которую вознаграждает Sample Question 8:
 
 ```json
 {
@@ -121,14 +121,14 @@ When subagent fails, return structured envelope, never a string. This is exact s
 }
 ```
 
-Two distinctions exam tests directly:
+Два различия, которые экзамен проверяет напрямую:
 
-- **Access failure vs valid empty result.** Timeout, 5xx, permission error → `failure_type: "access"`, retry candidate. Successful query returning zero rows is `status: "ok", results: []` — treating it as error wastes work.
-- **Local recovery vs propagation.** Subagents retry transient failures themselves (one or two attempts with backoff). Only propagate what they cannot resolve, always with `attempted` and `partial_results`.
+- **Отказ доступа против валидного пустого результата.** Тайм-аут, 5xx, отказ в правах → `failure_type: "access"`, кандидат на повтор. Успешный запрос, вернувший ноль строк, — это `status: "ok", results: []`; трактовать его как ошибку — пустая работа.
+- **Локальное восстановление против распространения.** Субагенты сами повторяют временные отказы (одна-две попытки с backoff). Наверх распространяйте только то, что разрешить не удалось, всегда с `attempted` и `partial_results`.
 
-In sample Q8: option B's "search unavailable after retries" hides what was attempted, option C's empty-but-marked-success destroys recoverability, option D kills independent subagents that succeeded. Only A — structured envelope — gives coordinator enough information to recover.
+В Sample Q8: вариант B «search unavailable after retries» скрывает то, что попыталось произойти; вариант C — пусто-но-помечено-как-успех — разрушает возможность восстановления; вариант D убивает независимых субагентов, которые отработали. Только A — структурированный конверт — даёт координатору достаточно информации для восстановления.
 
-Synthesis output mirrors this with **coverage annotations**:
+Вывод синтеза зеркалит это **аннотациями покрытия**:
 
 ```json
 {
@@ -138,14 +138,14 @@ Synthesis output mirrors this with **coverage annotations**:
 }
 ```
 
-### Pattern 4 — Scratchpad + manifest for long sessions
+### Паттерн 4 — Черновик + манифест для длинных сессий
 
-Long codebase exploration burns context fast — by seventh question model refers to "typical service patterns" rather than specific `BillingService` found in turn 3. Two layers of defense:
+Долгое исследование кодовой базы быстро жжёт контекст — к седьмому вопросу модель ссылается на «типичные паттерны сервиса» вместо конкретного `BillingService`, найденного на ходу 3. Два слоя защиты:
 
-1. **Scratchpad files on disk.** Write distilled findings to `.claude/scratch/<topic>.md`. Re-read scratchpad in subsequent turns. Survives `/compact` and session restart.
-2. **Subagent isolation.** Spawn subagent for verbose work and have it return 200-token summary. Main agent never sees 50K tokens of grep output.
+1. **Файлы-черновики на диске.** Пишите дистиллированные находки в `.claude/scratch/<topic>.md`. Перечитывайте черновик в последующих ходах. Переживают `/compact` и перезапуск сессии.
+2. **Изоляция субагентом.** Запускайте субагента под многословную работу, и пусть он возвращает сводку на 200 токенов. Основной агент никогда не видит 50К токенов grep-вывода.
 
-Typical layout:
+Типичная раскладка:
 
 ```
 .claude/scratch/
@@ -156,7 +156,7 @@ Typical layout:
 └── decisions.md               # ADR-style log of architectural decisions reached so far
 ```
 
-Minimal manifest:
+Минимальный манифест:
 
 ```json
 {
@@ -172,22 +172,22 @@ Minimal manifest:
 }
 ```
 
-On resume, coordinator loads `manifest.json`, re-injects `summary_for_resume`, and re-reads scratchpad files only when specific question requires it.
+При возобновлении координатор загружает `manifest.json`, повторно вкладывает `summary_for_resume` и перечитывает файлы-черновики только тогда, когда конкретный вопрос этого требует.
 
-**When to use `/compact`.** Claude Code's `/compact` summarizes conversation while preserving in-progress tasks, file operations, and architectural decisions; auto-compact fires near 95% of 200K window by default. Use manual `/compact` *before* threshold and *with* explicit preservation: `/compact preserve all file paths, the open questions list, and the manifest path`. Anything already written to scratchpad survives compaction trivially because it lives on disk — that is what makes `/compact` safe mid-investigation.
+**Когда использовать `/compact`.** Команда `/compact` в Claude Code суммирует диалог, сохраняя задачи в работе, операции с файлами и архитектурные решения; авто-компакция срабатывает около 95% от окна 200К по умолчанию. Используйте ручной `/compact` *до* порога и *с* явным сохранением: `/compact preserve all file paths, the open questions list, and the manifest path`. Всё, что вы уже записали в черновик, переживает компакцию без труда, потому что лежит на диске — это и делает `/compact` безопасным посреди расследования.
 
-### Pattern 5 — Confidence + stratified sampling
+### Паттерн 5 — Уверенность + стратифицированная выборка
 
-Auto-approving everything a 97%-accurate model is "sure of" hides two failures:
+Авто-одобрение всего, в чём модель с точностью 97% «уверена», скрывает два провала:
 
-- **Aggregate masks per-segment failure.** 99.5% on invoices and 65% on contracts averages to fine while contracts pipeline silently corrupts data.
-- **Model is confident on wrong cases.** Raw probabilities poorly calibrated; novel error patterns enter high-confidence stream undetected.
+- **Агрегат маскирует отказ на сегменте.** 99.5% на счетах и 65% на контрактах усредняются до «нормально», пока конвейер контрактов молча корёжит данные.
+- **Модель уверена в неверных случаях.** Сырые вероятности плохо откалиброваны; новые шаблоны ошибок попадают в поток с высокой уверенностью незамеченными.
 
-Fix has three parts:
+Лечение состоит из трёх частей:
 
-1. **Field-level confidence**, not document-level. `total_amount` may be high while `payment_terms` is low.
-2. **Calibration against a labeled validation set.** Bucket predictions by raw confidence, measure actual accuracy per bucket, and pick threshold where auto-approved stream meets error budget. Recalibrate per document type.
-3. **Stratified random sampling of high-confidence stream.** Route ~2% of auto-approved items to human review, stratified by document type and field, to surface novel errors.
+1. **Уверенность на уровне поля**, а не документа. У `total_amount` уверенность может быть высокой, а у `payment_terms` — низкой.
+2. **Калибровка по размеченному валидационному набору.** Раскладывайте предсказания по корзинам сырой уверенности, измеряйте реальную точность по каждой корзине и выбирайте порог, на котором поток авто-одобрения укладывается в ваш бюджет ошибок. Перекалибровывайте по типу документа.
+3. **Стратифицированная случайная выборка из потока с высокой уверенностью.** Направляйте ~2% авто-одобренных элементов на человеческое ревью, стратифицированно по типу документа и полю, чтобы вытаскивать на свет новые ошибки.
 
 ```
                     ┌─────────────────┐
@@ -205,11 +205,11 @@ extracted_records → │ confidence by   │
                                        audit queue
 ```
 
-Route low-confidence and ambiguous-source items to humans first; audit-sample queue catches novel patterns escaping into auto-approved stream. Recalibrate when new document type ships or model changes.
+Сначала направляйте элементы с низкой уверенностью и неоднозначным источником людям; очередь аудит-выборки ловит новые шаблоны, ускользающие в поток авто-одобрения. Перекалибровывайте, когда появляется новый тип документа или меняется модель.
 
-### Pattern 6 — Provenance through synthesis
+### Паттерн 6 — Провенанс через синтез
 
-"Summarize what these 12 sources say about X" produces prose with no traceable links from claim to source. Require subagents to emit **structured claim–source mappings** that synthesis step *must* preserve:
+Запрос «суммируй, что эти 12 источников говорят про X» порождает прозу без отслеживаемых связей от утверждения к источнику. Требуйте от субагентов выдавать **структурированные связки утверждение–источник**, которые шаг синтеза *обязан* сохранить:
 
 ```json
 {
@@ -237,15 +237,15 @@ Route low-confidence and ambiguous-source items to humans first; audit-sample qu
 }
 ```
 
-Three rules exam expects:
+Три правила, которых ждёт экзамен:
 
-- **Annotate conflicts; do not pick.** When credible sources disagree, surface both with attribution. Arbitrary selection is failure mode.
-- **Always carry dates.** A 2024 figure and 2026 figure are not contradictions; they are time series. Without `publication_date`, synthesis manufactures fake contradictions.
-- **Render content types appropriately.** Financial → tables, news → prose, technical → structured lists. Forcing everything through same prose synthesizer destroys source structure.
+- **Аннотируйте конфликты; не выбирайте.** Когда достоверные источники расходятся, показывайте оба с атрибуцией. Произвольный выбор — режим отказа.
+- **Всегда несите даты.** Цифра за 2024 и цифра за 2026 — не противоречие; это временной ряд. Без `publication_date` синтез изобретает фальшивые противоречия.
+- **Рендерите типы контента уместно.** Финансовый → таблицы, новости → проза, технический → структурированные списки. Принуждение всего к одному прозаическому синтезатору разрушает структуру источника.
 
-Anthropic's *How we built our multi-agent research system* describes this at production scale: subagents work in parallel with separate context windows, returning structured findings to lead agent, which composes final report and owns citation integrity.
+Текст Anthropic *How we built our multi-agent research system* описывает это на продакшен-масштабе: субагенты работают параллельно с отдельными контекстными окнами, возвращая структурированные находки ведущему агенту, который компонует финальный отчёт и владеет целостностью цитирования.
 
-## Escalation decision tree
+## Дерево решений по эскалации
 
 ```mermaid
 flowchart TD
@@ -262,45 +262,45 @@ flowchart TD
     G -- no --> I[Continue resolution]
 ```
 
-Four legitimate trigger lanes (E1–E4) map to knowledge bullets in 5.2. Frustration lane (H) is trap — *not* escalation trigger on its own, and sentiment-based auto-escalation is canonical wrong answer in sample Question 3.
+Четыре легитимные ветки-триггера (E1–E4) отображаются на пункты знаний из 5.2. Ветка раздражения (H) — это ловушка: *не* самостоятельный триггер эскалации, а авто-эскалация по тональности — каноничный неправильный ответ в Sample Question 3.
 
-## Anti-patterns to memorize
+## Антипаттерны, которые надо запомнить
 
-- **Sentiment-based auto-escalation.** Frustration ≠ complexity.
-- **Self-reported confidence as routing signal.** Agent is confidently wrong on same cases you most want escalated.
-- **Generic `"operation failed"` errors.** Strip failure type, attempted query, and partial results coordinator could have used.
-- **Empty result returned as success when call actually failed.** Silent data corruption — coordinator believes nothing matched when search never ran.
-- **Terminating workflow on a single subagent failure.** Discards independent subagents that succeeded.
-- **Aggregate 97% accuracy without per-segment breakdown.** Hides one document type collapsing while others stay healthy.
-- **Summarizing claims without preserving claim → source mapping.** Once gone you cannot reconstruct it; you can only re-search.
-- **Letting rolling summary rewrite numbers, dates, or verbatim quotes.** Pin those in untouchable case-facts block.
-- **Burying important findings in middle of long input.** Lost-in-the-middle is real; put critical findings at top with header.
-- **Treating `@import` or giant CLAUDE.md as context-saving optimization.** They expand context. Use scratchpads + subagent isolation + path-scoped rules.
+- **Авто-эскалация по тональности.** Раздражение ≠ сложность.
+- **Самооцениваемая уверенность как сигнал маршрутизации.** Агент уверенно ошибается на тех самых случаях, которые вы больше всего хотели бы эскалировать.
+- **Общие ошибки `"operation failed"`.** Отрезают тип отказа, попытанный запрос и частичные результаты, которые координатор мог бы использовать.
+- **Пустой результат, возвращённый как успех, когда вызов на самом деле упал.** Тихая порча данных — координатор верит, что ничего не совпало, тогда как поиск вообще не запустился.
+- **Прерывание рабочего процесса из-за отказа одного субагента.** Выбрасывает независимых субагентов, которые успешно отработали.
+- **Агрегированная точность 97% без разбивки по сегментам.** Прячет один тип документа, у которого всё разваливается, пока другие здоровы.
+- **Суммаризация утверждений без сохранения связки утверждение → источник.** Раз потеряв её, восстановить невозможно — только переискать.
+- **Позволить катящейся сводке переписать числа, даты или дословные цитаты.** Закрепляйте их в неприкосновенном блоке фактов по делу.
+- **Закопать важные находки в середине длинного ввода.** «Lost in the middle» — это реальность; ставьте критичные находки в начале с заголовком.
+- **Трактовать `@import` или гигантский CLAUDE.md как оптимизацию экономии контекста.** Они расширяют контекст. Используйте черновики + изоляцию субагентом + правила с областью путей.
 
-## Cross-cutting integration with other domains
+## Сквозная интеграция с другими доменами
 
-- **Scenario 1 (Customer Support, Q1–3).** Question 3 directly tests 5.2 escalation calibration. "Case facts" pattern is also right answer to almost any question about misidentified accounts or lost details across long conversations. Question 1's programmatic prerequisite for `get_customer` pairs naturally with case-facts block: hook enforces verification, and verified ID lands in case-facts block where downstream tools rely on it.
-- **Scenario 3 (Multi-Agent Research, Q7–9).** Question 8 *is* Pattern 3 of this section. Question 9 (scoped `verify_fact` tool for synthesis) presupposes provenance pattern of 5.6 — you cannot verify what you cannot trace back to source. "Lead agent saves plan to memory" practice from Anthropic's multi-agent research blog is manifest pattern of 5.4 in production.
-- **Scenario 2 / Code Generation (Q4–6).** Long codebase exploration sessions hit context degradation immediately; scratchpad + subagent + `/compact` triad of 5.4 is practical answer, paired with path-scoped rules and modular CLAUDE.md guidance from Section 7.
+- **Сценарий 1 (Customer Support Resolution Agent, Q1–3).** Question 3 напрямую проверяет калибровку эскалации из 5.2. Паттерн «фактов по делу» — также правильный ответ почти на любой вопрос о перепутанных аккаунтах или потерянных деталях в длинных диалогах. Программная предпосылка для `get_customer` из Question 1 естественно сочетается с блоком фактов по делу: хук обеспечивает верификацию, а верифицированный идентификатор оказывается в блоке фактов по делу, где на него полагаются нижестоящие инструменты.
+- **Сценарий 3 (Multi-Agent Research System, Q7–9).** Question 8 *и есть* паттерн 3 этого раздела. Question 9 (узкоспециализированный инструмент `verify_fact` для синтеза) предполагает паттерн провенанса из 5.6 — нельзя верифицировать то, что нельзя проследить обратно к источнику. Практика «ведущий агент сохраняет план в память» из блога Anthropic о multi-agent research — это паттерн манифеста из 5.4 на продакшен-масштабе.
+- **Сценарий 2 / Code Generation with Claude Code (Q4–6).** Длинные сессии исследования кодовой базы немедленно упираются в деградацию контекста; триада «черновик + субагент + `/compact`» из 5.4 — это практический ответ, в паре с правилами с областью путей и модульными рекомендациями по CLAUDE.md из раздела 7.
 
-Every other domain assumes agent is *reliable*. Domain 5 is what makes that assumption hold in production.
+Каждый другой домен предполагает, что агент *надёжен*. Домен 5 — это то, что заставляет это предположение держаться в продакшене.
 
-## Exam-style focus points
+## Ключевые акценты для экзамена
 
-- Four legitimate escalation triggers: explicit human request, policy exception/gap, inability to make progress, multi-match ambiguity. Two unreliable proxies: sentiment, self-reported confidence.
-- Structured-error envelope shape (sample Q8): `failure_type`, `attempted`, `partial_results`, `alternatives`. That exact shape is right answer when subagent times out.
-- **Access failure** (retry candidate) vs **valid empty result** (no retry).
-- Lossy summarization → "case facts block, included every turn, outside the summary."
-- 40+ field tool outputs → "trim at tool wrapper to fields downstream uses."
-- Long codebase session "model refers to typical patterns" → "scratchpad files + subagents." `/compact` is mid-session lever.
-- 97% aggregate accuracy is *not* sufficient to auto-approve until you have per-document-type, per-field accuracy plus stratified-sample audit on high-confidence stream.
-- LLM self-reported confidence is poorly calibrated. Calibrate against labeled validation set.
-- Conflicting statistics in synthesis → annotate both with sources, never pick. Always require dates.
-- Lost-in-the-middle applies to Claude too; place key findings at start of long inputs with explicit headers.
-- `/compact` preserves in-progress tasks, file paths, and architectural decisions but loses detailed tool output; pair it with on-disk scratchpads.
-- Prompt caching needs stable content before volatile content (`tools → system → messages`). Case-facts block is perfect cache target *if appended, not rewritten*.
+- Четыре легитимных триггера эскалации: явный запрос человека, исключение/пробел в политике, невозможность сделать прогресс, многозначное совпадение. Два ненадёжных прокси: тональность, самооцениваемая уверенность.
+- Форма структурированного конверта ошибки (Sample Q8): `failure_type`, `attempted`, `partial_results`, `alternatives`. Именно эта форма — правильный ответ, когда субагент попал в тайм-аут.
+- **Отказ доступа** (кандидат на повтор) против **валидного пустого результата** (без повтора).
+- Лоссовая суммаризация → «блок фактов по делу, включаемый каждый ход, вне сводки».
+- Выводы инструментов с 40+ полями → «обрезать в обёртке инструмента до полей, которые использует нижестоящее звено».
+- Длинная сессия по кодовой базе «модель ссылается на типичные паттерны» → «файлы-черновики + субагенты». `/compact` — это рычаг посреди сессии.
+- Агрегированная точность 97% *недостаточна* для авто-одобрения, пока у вас нет точности по типу документа и по полю плюс аудит по стратифицированной выборке из потока с высокой уверенностью.
+- Самооцениваемая уверенность LLM плохо откалибрована. Калибруйте по размеченному валидационному набору.
+- Конфликтующие статистики при синтезе → аннотируйте обе с источниками, никогда не выбирайте. Всегда требуйте даты.
+- «Lost in the middle» применимо и к Claude; ставьте ключевые находки в начале длинных вводов с явными заголовками.
+- `/compact` сохраняет задачи в работе, пути к файлам и архитектурные решения, но теряет подробный вывод инструментов; сочетайте его с черновиками на диске.
+- Prompt caching требует стабильного контента до изменчивого (`tools → system → messages`). Блок фактов по делу — идеальная цель для кэша, *если его дополнять, а не переписывать*.
 
-## References
+## Ссылки
 
 - Anthropic, *Effective context engineering for AI agents* — [anthropic.com/engineering/effective-context-engineering-for-ai-agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
 - Anthropic, *Writing effective tools for AI agents* — [anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents)

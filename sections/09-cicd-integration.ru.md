@@ -1,25 +1,25 @@
 ---
-title: "Раздел 9 — Claude Code in CI/CD Pipelines"
-linkTitle: "9. CI/CD Integration"
+title: "Раздел 9 — Claude Code в пайплайнах CI/CD"
+linkTitle: "9. Интеграция с CI/CD"
 weight: 9
-description: "Domain 3.6 — claude -p и --output-format json, --json-schema, prompt design for actionable, low-false-positive review."
+description: "Домен 3.6 — claude -p и --output-format json, --json-schema, дизайн промптов для действенного ревью с низкой долей ложных срабатываний."
 ---
 
 ## Что покрывает этот раздел
 
-Как запускать Claude Code unattended inside build system: flags that prevent interactive hangs, output shapes downstream tools can parse, project-level context that keeps model on-policy, and architectural patterns (independent reviewer, multi-pass review, batch-vs-sync), которые exam tests through Questions 10, 11, and 12.
+Как запускать Claude Code без присмотра внутри сборочной системы: флаги, предотвращающие интерактивные зависания; формы вывода, которые могут разбирать инструменты ниже по конвейеру; контекст уровня проекта, удерживающий модель в рамках политик; и архитектурные паттерны (независимый ревьюер, многопроходное ревью, батч против синхрона), которые экзамен проверяет вопросами 10, 11 и 12.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-Task Statement 3.6 (guide lines 600–629) covers: `-p` / `--print` for non-interactive mode; `--output-format json` plus `--json-schema` for machine-parseable findings; `CLAUDE.md` as project-context mechanism for CI-invoked Claude Code (testing standards, fixture conventions, review criteria); and session-context isolation — session that *wrote* code is wrong session to *review* it. Skills: prevent interactive hangs with `-p`; produce structured findings for inline PR comments; feed prior review findings back in to suppress duplicate comments; pass existing test files to test-generation runs to avoid re-covering scenarios; document testing standards and fixtures in `CLAUDE.md`.
+Task Statement 3.6 (строки 600–629 руководства) покрывает: `-p` / `--print` для неинтерактивного режима; `--output-format json` плюс `--json-schema` для машиночитаемых замечаний; `CLAUDE.md` как механизм проектного контекста для Claude Code, вызываемого из CI (стандарты тестирования, соглашения по фикстурам, критерии ревью); а также изоляцию контекста сессии — сессия, которая *написала* код, — неподходящая сессия для того, чтобы его *ревьюить*. Навыки: предотвращать интерактивные зависания через `-p`; выдавать структурированные замечания для встроенных комментариев к PR; передавать предыдущие замечания обратно, чтобы подавить дубликаты комментариев; передавать существующие тестовые файлы при генерации тестов, чтобы не покрывать заново уже покрытые сценарии; документировать стандарты тестирования и фикстуры в `CLAUDE.md`.
 
-Sample Question 10 (`-p` is correct headless flag; `CLAUDE_HEADLESS`, `--batch`, and `< /dev/null` are distractors), Question 11 (Batches API for overnight tech-debt report, *not* blocking pre-merge gate), and Question 12 (split a 14-file PR into per-file passes plus integration pass) all key off this section.
+Sample Question 10 (`-p` — правильный флаг для headless; `CLAUDE_HEADLESS`, `--batch` и `< /dev/null` — отвлекающие варианты), Question 11 (Message Batches API для ночного отчёта о техдолге, *а не* для блокирующей проверки до merge) и Question 12 (разбить PR из 14 файлов на проходы по файлу плюс проход интеграции) — все опираются на этот раздел.
 
-## Headless / non-interactive Claude Code
+## Headless / неинтерактивный Claude Code
 
-### The `-p` flag
+### Флаг `-p`
 
-`claude -p "<prompt>"` (alias `--print`) makes Claude Code run as one-shot SDK query: it consumes prompt, streams or prints response to stdout, and exits with status code. No TTY check, no permission prompt loop, no waiting on stdin. This is only documented mechanism for CI. Trap from Question 10: no `CLAUDE_HEADLESS` env var and no `--batch` flag, and redirecting stdin from `/dev/null` does not work because Claude Code still expects to render interactive UI.
+`claude -p "<prompt>"` (синоним `--print`) запускает Claude Code как одноразовый SDK-запрос: он принимает промпт, стримит или печатает ответ в stdout и завершается с кодом возврата. Никакой проверки TTY, никакого цикла подтверждения разрешений, никакого ожидания на stdin. Это единственный документированный механизм для CI. Ловушка из вопроса 10: переменной окружения `CLAUDE_HEADLESS` нет, флага `--batch` нет, а перенаправление stdin из `/dev/null` не работает, потому что Claude Code всё равно ожидает рендерить интерактивный UI.
 
 ```bash
 claude -p "Review the diff for SQL-injection and SSRF risks. Be terse." \
@@ -27,21 +27,21 @@ claude -p "Review the diff for SQL-injection and SSRF risks. Be terse." \
   --max-turns 6
 ```
 
-Add `--bare` (Claude Code 2.1.x) when you do not need hooks, plugins, MCP servers, or auto-discovered `CLAUDE.md`; it cuts startup latency and removes a class of "why did my CI grab my laptop's MCP config" failures.
+Добавляйте `--bare` (Claude Code 2.1.x), когда вам не нужны хуки, плагины, MCP-серверы или автоматически обнаруженный `CLAUDE.md`; это сокращает задержку запуска и устраняет класс отказов «почему мой CI подхватил MCP-конфиг с моего ноутбука».
 
-### Output formats (text, json, stream-json)
+### Форматы вывода (text, json, stream-json)
 
-`--output-format` controls how response is serialized:
+`--output-format` управляет тем, как сериализуется ответ:
 
-- `text` (default) — plain prose; good for humans, bad for parsers.
-- `json` — one JSON object with final response, cost, duration, session ID, stop reason. Use when next step is `jq` or script.
-- `stream-json` — newline-delimited events for tools that render progress or surface tool-use events. Pair with `--include-partial-messages` for token-by-token deltas, `--include-hook-events` for hook lifecycle.
+- `text` (по умолчанию) — простая проза; хорошо для людей, плохо для парсеров.
+- `json` — один JSON-объект с финальным ответом, стоимостью, длительностью, идентификатором сессии и причиной остановки. Используйте, когда следующий шаг — `jq` или скрипт.
+- `stream-json` — события, разделённые переводами строк, для инструментов, которые отображают прогресс или показывают события использования инструментов. Сочетайте с `--include-partial-messages` для дельт по токенам, с `--include-hook-events` — для жизненного цикла хуков.
 
-`--input-format stream-json` lets parent process feed Claude Code a structured event stream — useful if CI orchestrator is itself an agent.
+`--input-format stream-json` позволяет родительскому процессу подавать в Claude Code структурированный поток событий — полезно, если ваш CI-оркестратор сам является агентом.
 
-### `--json-schema` for structured findings
+### `--json-schema` для структурированных замечаний
 
-`--json-schema '<JSON Schema>'` (print mode only) makes Claude Code emit final payload that is *validated* against schema you supply. This is flag exam expects when next pipeline stage is "post each finding as inline GitHub PR review comment."
+`--json-schema '<JSON Schema>'` (только в print-режиме) заставляет Claude Code выдавать финальный payload, *валидируемый* против указанной вами схемы. Это тот флаг, к которому экзамен ожидает обращения, когда следующий этап конвейера — «опубликовать каждое замечание как встроенный review-комментарий к PR в GitHub».
 
 ```bash
 claude -p "Review changed files in $PR_DIFF for security issues" \
@@ -51,7 +51,7 @@ claude -p "Review changed files in $PR_DIFF for security issues" \
   > findings.json
 ```
 
-Schema mapping cleanly to GitHub's `pulls/{pr}/comments` payload:
+Схема, чисто отображающаяся в payload `pulls/{pr}/comments` от GitHub, выглядит так:
 
 ```json
 {
@@ -76,28 +76,28 @@ Schema mapping cleanly to GitHub's `pulls/{pr}/comments` payload:
 }
 ```
 
-### Permission modes for unattended runs
+### Режимы разрешений для запусков без присмотра
 
-Interactive permission prompts are second-most-common cause of stuck CI jobs (after forgetting `-p`). Key flags:
+Интерактивные запросы разрешений — вторая по частоте причина зависших CI-задач (после забытого `-p`). Ключевые флаги:
 
-- `--allowedTools "Read,Bash(git diff *),Bash(gh pr view *)"` — narrow allowlist; preferred default.
-- `--disallowedTools "Edit,Write,Bash(rm *)"` — block-only writes when job is read-only review.
-- `--permission-mode acceptEdits` (or `bypassPermissions`) — accept changes without prompts. `--dangerously-skip-permissions` is explicit "I know" form; reserve for sandboxed runners with no secrets in env.
-- `--permission-prompt-tool <mcp-tool>` delegates permission decisions to custom MCP tool when every call must be logged before approval.
+- `--allowedTools "Read,Bash(git diff *),Bash(gh pr view *)"` — узкий allowlist; предпочтительное значение по умолчанию.
+- `--disallowedTools "Edit,Write,Bash(rm *)"` — блокирует только записи, когда задача — ревью только на чтение.
+- `--permission-mode acceptEdits` (или `bypassPermissions`) — принимает изменения без запросов. `--dangerously-skip-permissions` — это явная форма «я понимаю»; оставьте её для песочничных раннеров без секретов в окружении.
+- `--permission-prompt-tool <mcp-tool>` делегирует решения о разрешениях кастомному MCP-инструменту, когда каждый вызов должен логироваться перед одобрением.
 
-### Session control flags
+### Флаги управления сессиями
 
-- `--session-id <uuid>` pins UUID so downstream steps can resume same conversation later.
-- `--resume <id>` / `-r` continues that session — mechanism behind "include prior review findings when re-running."
-- `--continue` / `-c` picks most recent conversation in current directory.
-- `--fork-session` resumes-but-branches so retries do not mutate canonical thread.
-- `--no-session-persistence` writes nothing to disk; useful in stateless runners where workspace destroyed between jobs.
+- `--session-id <uuid>` закрепляет UUID, чтобы последующие шаги могли возобновить тот же диалог позже.
+- `--resume <id>` / `-r` продолжает эту сессию — механизм, стоящий за «включить предыдущие замечания при повторном запуске».
+- `--continue` / `-c` подхватывает самую свежую сессию в текущей директории.
+- `--fork-session` возобновляет с ответвлением, чтобы повторные запуски не меняли каноническую ветку.
+- `--no-session-persistence` ничего не пишет на диск; полезно в безсостояний раннерах, где рабочее пространство уничтожается между задачами.
 
-## Reference patterns
+## Эталонные паттерны
 
-### 1. Pre-merge security review (synchronous, blocking)
+### 1. Проверка безопасности до merge (синхронная, блокирующая)
 
-Blocking gates must use real-time call. Per Question 11, Message Batches API is wrong tool here — its 50%-cost discount comes at price of up to 24-hour latency, not acceptable for developer waiting on merge.
+Блокирующие гейты должны использовать реальный вызов в режиме реального времени. Согласно вопросу 11, Message Batches API здесь — неподходящий инструмент: его скидка в 50% по стоимости даётся ценой задержки до 24 часов, что неприемлемо для разработчика, ждущего merge.
 
 ```yaml
 - name: Claude security review
@@ -114,9 +114,9 @@ Blocking gates must use real-time call. Per Question 11, Message Batches API is 
       > findings.json
 ```
 
-### 2. Test generation in nightly batch
+### 2. Генерация тестов в ночном батче
 
-Overnight test-debt jobs are exactly workload where Batches API earns 50% discount. Run Claude Code with `-p`, pass existing test files in context so it does not re-cover scenarios, and route generation requests through Batches API (see Section 11).
+Ночные задачи по тех-долгу тестов — ровно та нагрузка, на которой Message Batches API окупает свою скидку в 50%. Запускайте Claude Code с `-p`, передавайте существующие тестовые файлы в контекст, чтобы он не покрывал заново уже покрытые сценарии, и направляйте запросы на генерацию через Message Batches API (см. раздел 11).
 
 ```bash
 ls tests/ | xargs -I{} cat tests/{} > .ci/existing-tests.txt
@@ -128,9 +128,9 @@ claude -p \
   --max-turns 12
 ```
 
-### 3. Inline PR comment posting from JSON output
+### 3. Публикация встроенных комментариев к PR из JSON-вывода
 
-With schema-validated `findings.json`, a single shell loop turns file into native review comments:
+С `findings.json`, провалидированным по схеме, одного shell-цикла достаточно, чтобы превратить файл в нативные review-комментарии:
 
 ```bash
 jq -c '.findings[]' findings.json | while read f; do
@@ -142,9 +142,9 @@ jq -c '.findings[]' findings.json | while read f; do
 done
 ```
 
-### 4. Re-running review on new commits without duplicate comments
+### 4. Перезапуск ревью на новых коммитах без дублирующих комментариев
 
-Domain 3.6 is explicit: when PR is re-pushed, include prior findings in context and instruct Claude to report only new or still-unaddressed issues.
+Домен 3.6 прямо требует: при повторном пуше в PR включайте предыдущие замечания в контекст и инструктируйте Claude сообщать только о новых либо всё ещё нерешённых проблемах.
 
 ```bash
 gh pr view $PR --json comments -q '.comments' \
@@ -156,9 +156,9 @@ gh pr view $PR --json comments -q '.comments' \
       > new-findings.json
 ```
 
-## The Claude Code GitHub Action
+## GitHub Action для Claude Code
 
-### Quick start
+### Быстрый старт
 
 ```yaml
 name: Claude review
@@ -181,21 +181,21 @@ jobs:
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Read"
 ```
 
-### Inputs / outputs
+### Входы и выходы
 
-Key inputs from `action.yml`: `anthropic_api_key` (or `claude_code_oauth_token`, `use_bedrock`, `use_vertex`); `prompt`; `claude_args` (raw CLI args appended to underlying `claude -p`); `trigger_phrase` (default `@claude`); `label_trigger` (default `claude`); `track_progress` (renders tracking comment with checkboxes); `use_sticky_comment` (one comment for all); `classify_inline_comments` (Haiku pre-filter to drop probe/test comments); `branch_prefix` (default `claude/`). Structured JSON returned by run is exposed as GitHub Action outputs.
+Ключевые входы из `action.yml`: `anthropic_api_key` (или `claude_code_oauth_token`, `use_bedrock`, `use_vertex`); `prompt`; `claude_args` (сырые аргументы CLI, дописываемые к лежащему ниже `claude -p`); `trigger_phrase` (по умолчанию `@claude`); `label_trigger` (по умолчанию `claude`); `track_progress` (рендерит трекинг-комментарий с чек-боксами); `use_sticky_comment` (один комментарий на всё); `classify_inline_comments` (Haiku-пре-фильтр, отбрасывающий пробные/тестовые комментарии); `branch_prefix` (по умолчанию `claude/`). Структурированный JSON, возвращаемый запуском, выставляется как выходы GitHub Action.
 
-### Common gotchas
+### Частые подводные камни
 
-- MCP inline-comment tool needs `confirmed: true` to post immediately; otherwise comments buffered to `/tmp/inline-comments-buffer.jsonl` for Haiku classification.
-- Action needs `pull-requests: write` and `issues: write` token permissions, otherwise it silently fails to post.
-- Pass model selection and turn caps via `claude_args`, not separate inputs.
+- MCP-инструменту встроенных комментариев нужен `confirmed: true`, чтобы публиковать сразу; иначе комментарии буферизуются в `/tmp/inline-comments-buffer.jsonl` для классификации через Haiku.
+- Action требует прав токена `pull-requests: write` и `issues: write`, иначе он молча перестаёт публиковать.
+- Выбор модели и лимит ходов передавайте через `claude_args`, а не через отдельные входы.
 
-## CLAUDE.md for CI
+## CLAUDE.md для CI
 
-### Sections that pay off
+### Разделы, которые окупаются
 
-For CI-invoked Claude, highest-leverage `CLAUDE.md` sections are ones model otherwise has to guess: test runner command, where fixtures live, which mocking library you use, what counts as "valuable" test, and review criteria you care about — exactly testing standards, fixtures, and review criteria the Skills bullets for 3.6 call out.
+Для Claude, вызываемого из CI, разделы `CLAUDE.md` с наибольшим рычагом — это те, о которых модели иначе пришлось бы догадываться: команда раннера тестов, где лежат фикстуры, какую мокирующую библиотеку вы используете, что считается «ценным» тестом и какие критерии ревью вам важны — ровно те стандарты тестирования, фикстуры и критерии ревью, на которые указывают пункты «Навыки» для 3.6.
 
 ```markdown
 ## Testing
@@ -210,60 +210,60 @@ For CI-invoked Claude, highest-leverage `CLAUDE.md` sections are ones model othe
 - Comment-only: style, naming, missing comments
 ```
 
-### Avoiding context bloat
+### Избегание раздувания контекста
 
-`CLAUDE.md` is loaded on every invocation, so every line is paid for on every CI run. Strip historical decisions, link out to ADRs, prefer one declarative line over paragraph, and resist urge to paste entire style guide. In `--bare` mode `CLAUDE.md` is not auto-loaded at all; opt-in via `--append-system-prompt-file` when you want it.
+`CLAUDE.md` загружается при каждом вызове, поэтому за каждую его строку вы платите на каждом запуске CI. Удаляйте исторические решения, ссылайтесь на ADR вместо вставки, предпочитайте одну декларативную строку целому абзацу и не поддавайтесь искушению вставить весь стайл-гайд. В режиме `--bare` `CLAUDE.md` не загружается автоматически вовсе; подключайте его через `--append-system-prompt-file`, когда он вам нужен.
 
-## Independent reviewer pattern
+## Паттерн независимого ревьюера
 
-### Why a separate session beats self-review
+### Почему отдельная сессия лучше самопроверки
 
-Domain 3.6 explicitly calls out *session context isolation*. Session that generated code carries its own reasoning history — justifications that produced bug. That session is biased toward confirming earlier decisions. Fresh session sees only diff, with no narrative attached, and catches issues author's session anchored away from. Anthropic's own Code Review product uses fleet of independent agents for same reason.
+Домен 3.6 явно выделяет *изоляцию контекста сессии*. Сессия, сгенерировавшая код, несёт собственную историю рассуждений — те самые оправдания, которые породили баг. Эта сессия предвзята в сторону подтверждения своих предыдущих решений. Свежая сессия видит только дифф, без приложенной нарративной истории, и ловит замечания, на которые сессия автора закрыла глаза. Собственный продукт Anthropic Code Review использует флот независимых агентов по той же причине.
 
-In practice: never `--continue` from implementation session into review job. Spawn reviewer with new `--session-id`, empty conversation, and only diff plus `CLAUDE.md` as context.
+На практике: никогда не `--continue` из сессии реализации в задачу ревью. Запускайте ревьюера с новым `--session-id`, пустым диалогом и только с диффом плюс `CLAUDE.md` в качестве контекста.
 
-### Multi-pass for large PRs (per-file + cross-file integration)
+### Многопроходное ревью для больших PR (проход по файлу + проход интеграции)
 
-This is Question 12. Single review pass over 14 files exhibits *attention dilution* — depth varies file-to-file and identical patterns get contradictory verdicts. Fix is two passes:
+Это вопрос 12. Один проход ревью по 14 файлам демонстрирует *размывание внимания* — глубина варьируется от файла к файлу, а идентичные паттерны получают противоречивые вердикты. Решение — два прохода:
 
-1. **Per-file pass.** One `claude -p` invocation per changed file, scoped to local issues (bugs, style, security in this file).
-2. **Integration pass.** One additional invocation given diff summary and asked specifically about cross-file concerns: API boundary changes, schema migrations, contract drift, shared-state mutation.
+1. **Проход по файлу.** Один вызов `claude -p` на каждый изменённый файл, ограниченный локальными замечаниями (баги, стиль, безопасность в этом файле).
+2. **Проход интеграции.** Один дополнительный вызов получает сводку диффа и специально спрашивается о межфайловых вопросах: изменения API-границ, миграции схем, дрейф контрактов, мутация общего состояния.
 
-Larger model or bigger context window does not solve this; issue is allocation of attention, not token budget.
+Более крупная модель или большее контекстное окно эту проблему не решают; вопрос в распределении внимания, а не в бюджете токенов.
 
-## Cost & latency knobs
+## Рычаги стоимости и задержки
 
 ### Prompt caching
 
-Cache reads cost roughly 10x less than cache writes, and Claude Code built around hitting cache aggressively. To maximize hits in CI: put stable content (system prompt, `CLAUDE.md`, repo conventions) *first*, dynamic content (diff, prior findings) *last*; do not change model or tool list mid-session; on Claude Code 2.1.108+, set `ENABLE_PROMPT_CACHING_1H=1` for scheduled jobs that fire more than every five minutes. Use `--exclude-dynamic-system-prompt-sections` with `-p` to keep per-machine details out of cache key when many runners share same task.
+Чтения из кэша обходятся примерно в 10 раз дешевле записи в кэш, и Claude Code построен вокруг агрессивного попадания в кэш. Чтобы максимизировать попадания в CI: ставьте стабильный контент (системный промпт, `CLAUDE.md`, соглашения репозитория) *в начало*, динамический (дифф, предыдущие замечания) — *в конец*; не меняйте модель или список инструментов посреди сессии; в Claude Code 2.1.108+ выставляйте `ENABLE_PROMPT_CACHING_1H=1` для запланированных задач, срабатывающих чаще, чем раз в пять минут. Используйте `--exclude-dynamic-system-prompt-sections` вместе с `-p`, чтобы не пускать машинно-специфичные детали в ключ кэша, когда одну и ту же задачу разделяют много раннеров.
 
-### Batch API for non-blocking workloads
+### Batch API для неблокирующих нагрузок
 
-Cross-link to Section 11: Message Batches API gives 50% cost savings but up to 24-hour SLA. Use it for overnight tech-debt report; do not use it for pre-merge gate. This is distinction Sample Question 11 tests.
+Перекрёстная ссылка на раздел 11: Message Batches API даёт экономию 50% по стоимости, но SLA до 24 часов. Используйте его для ночного отчёта о техдолге; не используйте для гейта до merge. Это и есть различие, которое проверяет Sample Question 11.
 
-### Choosing model size by job
+### Выбор размера модели под задачу
 
-Pre-merge security review on hot path: Sonnet. Style-and-lint pass on docs PRs: Haiku. Architecture review on quarterly refactor: Opus, gated by `--max-budget-usd`. Switch model via `--model`; do not switch mid-session or you invalidate cache.
+Проверка безопасности до merge на горячем пути: Sonnet. Стиль-и-линт проход на PR с документами: Haiku. Архитектурное ревью на ежеквартальный рефакторинг: Opus, с ограничением через `--max-budget-usd`. Переключайте модель через `--model`; не переключайте посреди сессии, иначе инвалидируете кэш.
 
-## Exam-style focus points
+## Ключевые акценты для экзамена
 
-- `-p` is the *only* documented way to run Claude Code unattended. `CLAUDE_HEADLESS`, `--batch`, and `</dev/null` are distractors.
-- `--output-format json --json-schema <schema>` is canonical recipe for pipeline-parseable findings.
-- Blocking workloads (pre-merge) use real-time calls; non-blocking overnight workloads use Batches API.
-- Large PRs: per-file passes plus one integration pass — not single mega-prompt and not bigger context window.
-- Session that wrote code is wrong session to review it; spawn independent reviewer.
-- Re-running review must include prior findings in context to suppress duplicate comments.
-- `CLAUDE.md` carries testing standards, fixtures, and review criteria — every line is paid for on every CI run, so keep it lean.
+- `-p` — это *единственный* документированный способ запустить Claude Code без присмотра. `CLAUDE_HEADLESS`, `--batch` и `</dev/null` — отвлекающие варианты.
+- `--output-format json --json-schema <schema>` — каноничный рецепт для замечаний, парсимых конвейером.
+- Блокирующие нагрузки (до merge) используют вызовы в реальном времени; неблокирующие ночные нагрузки — Message Batches API.
+- Большие PR: проходы по файлу плюс один проход интеграции — не один мега-промпт и не большее контекстное окно.
+- Сессия, написавшая код, — неподходящая сессия для ревью; поднимайте независимого ревьюера.
+- Перезапуск ревью обязан включать предыдущие замечания в контекст, чтобы подавить дубликаты комментариев.
+- `CLAUDE.md` несёт стандарты тестирования, фикстуры и критерии ревью — за каждую строку платится на каждом запуске CI, поэтому держите его компактным.
 
-## References
+## Ссылки
 
-- Claude Code CLI reference: <https://docs.claude.com/en/docs/claude-code/cli-usage>
-- Run Claude Code programmatically (headless): <https://code.claude.com/docs/en/headless>
-- Agent SDK (Python / TypeScript): <https://code.claude.com/docs/en/agent-sdk/python>, <https://code.claude.com/docs/en/agent-sdk/typescript>
+- Справочник CLI Claude Code: <https://docs.claude.com/en/docs/claude-code/cli-usage>
+- Запуск Claude Code программно (headless): <https://code.claude.com/docs/en/headless>
+- Claude Agent SDK (Python / TypeScript): <https://code.claude.com/docs/en/agent-sdk/python>, <https://code.claude.com/docs/en/agent-sdk/typescript>
 - Structured outputs: <https://code.claude.com/en/agent-sdk/structured-outputs>
-- Claude Code GitHub Action: <https://github.com/anthropics/claude-code-action> (usage: `docs/usage.md`, recipes: `docs/solutions.md`)
-- GitHub Actions docs: <https://docs.anthropic.com/en/docs/claude-code/github-actions>
-- Code Review product: <https://code.claude.com/docs/en/code-review> and <https://claude.com/blog/code-review>
-- Subagents pattern: <https://claude.com/blog/subagents-in-claude-code>
-- Prompt caching: <https://claude.com/blog/lessons-from-building-claude-code-prompt-caching-is-everything> and <https://docs.claude.com/en/docs/build-with-claude/prompt-caching>
+- GitHub Action для Claude Code: <https://github.com/anthropics/claude-code-action> (использование: `docs/usage.md`, рецепты: `docs/solutions.md`)
+- Документация GitHub Actions: <https://docs.anthropic.com/en/docs/claude-code/github-actions>
+- Продукт Code Review: <https://code.claude.com/docs/en/code-review> и <https://claude.com/blog/code-review>
+- Паттерн субагентов: <https://claude.com/blog/subagents-in-claude-code>
+- Prompt caching: <https://claude.com/blog/lessons-from-building-claude-code-prompt-caching-is-everything> и <https://docs.claude.com/en/docs/build-with-claude/prompt-caching>
 - Memory / CLAUDE.md: <https://code.claude.com/en/memory>

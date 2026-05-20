@@ -1,49 +1,49 @@
 ---
-title: "Раздел 10 — Prompt Engineering: Explicit Criteria, Few-Shot и Validation Loops"
-linkTitle: "10. Prompt Engineering"
+title: "Раздел 10 — Промпт-инжиниринг: явные критерии, few-shot и циклы валидации"
+linkTitle: "10. Промпт-инжиниринг"
 weight: 10
-description: "Domains 4.1, 4.2, 4.4 — explicit criteria вместо thresholds, few-shot для ambiguous scenarios и multi-pass review для large diffs."
+description: "Домены 4.1, 4.2, 4.4 — явные критерии вместо порогов, few-shot для неоднозначных сценариев и многопроходное ревью для больших диффов."
 ---
 
 ## Что покрывает этот раздел
 
-Три prompt-level техники, которые Foundations exam считает core для перевода Claude feature из demo-quality в production-quality: **explicit categorical criteria** instead of vague instructions, **2–4 targeted few-shot examples**, and **validation-retry loop** with self-correction signals baked into schema. Domain 4.3 (tool use + JSON schemas) covered in Section 11; this section closes the *semantic* gap that strict schemas don't.
+Три техники уровня промпта, которые экзамен Foundations считает ключевыми для перевода Claude-фичи из demo-качества в production-качество: **явные категориальные критерии** вместо размытых инструкций, **2–4 целевых few-shot примера** и **цикл валидации с повторными попытками** с сигналами самокоррекции, встроенными в схему. Домен 4.3 (использование инструментов + JSON Schema) рассматривается в разделе 11; этот раздел закрывает *семантический* разрыв, который строгие схемы не закрывают.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 4.1 Explicit criteria over vague instructions
+### 4.1 Явные критерии вместо размытых инструкций
 
-- Explicit categorical criteria beat vague instructions: *"flag comments only when claimed behavior contradicts actual code behavior"* outperforms *"check that comments are accurate"*. General instructions like *"be conservative"* or *"only report high-confidence findings"* do **not** improve precision; high false-positive rates in any one category erode trust across **all** categories.
-- Skills: write specific report-when / skip-when rules per category; temporarily disable high-FP categories while improving them; define explicit severity criteria with concrete code examples per level.
+- Явные категориальные критерии лучше размытых инструкций: *"flag comments only when claimed behavior contradicts actual code behavior"* превосходит *"check that comments are accurate"*. Общие инструкции вроде *"be conservative"* или *"only report high-confidence findings"* **не** повышают точность; высокая доля ложных срабатываний в одной категории подрывает доверие сразу ко **всем** категориям.
+- Навыки: пишите конкретные правила «сообщать, когда / пропускать, когда» по каждой категории; временно отключайте категории с высокой долей ложных срабатываний на время доработки; определяйте явные критерии серьёзности с конкретными примерами кода для каждого уровня.
 
 ### 4.2 Few-shot prompting
 
-- Few-shot examples are the **most effective** technique for consistent formatted, actionable output when detailed instructions alone produce inconsistent results. They drive ambiguous-case handling (tool selection, escalation), enable generalization to novel patterns, and reduce hallucination in extraction over varied document structures.
-- Skills: 2–4 targeted examples that show *reasoning* for chosen action over plausible alternatives; examples demonstrating desired output format (location, issue, severity, suggested fix); examples distinguishing acceptable patterns from genuine issues; examples covering each structural variant of input.
+- Few-shot примеры — **самая эффективная** техника для согласованного форматированного, действенного вывода, когда одних подробных инструкций недостаточно. Они помогают обрабатывать неоднозначные случаи (выбор инструмента, эскалация), обеспечивают обобщение на новые шаблоны и снижают галлюцинации при извлечении из документов разной структуры.
+- Навыки: 2–4 целевых примера, показывающих *рассуждение* в пользу выбранного действия по сравнению с правдоподобными альтернативами; примеры, демонстрирующие желаемый формат вывода (расположение, проблема, серьёзность, предложенное исправление); примеры, отличающие приемлемые шаблоны от настоящих проблем; примеры, покрывающие каждый структурный вариант ввода.
 
-### 4.4 Validation, retry & feedback loops
+### 4.4 Валидация, повторные попытки и циклы обратной связи
 
-- Retry-with-error-feedback: append the **specific** validation error to next prompt to guide self-correction. Retry is ineffective when required information is **absent from source**. Distinguish **semantic** validation errors (values don't sum, wrong field placement) from **schema syntax** errors (already eliminated by tool use).
-- Skills: follow-up requests including original document + failed extraction + specific errors; add `detected_pattern` to enable false-positive analysis; design self-correction by extracting `calculated_total` alongside `stated_total`; add `conflict_detected` booleans for inconsistent source data.
+- Повторная попытка с обратной связью по ошибке: добавляйте **конкретную** ошибку валидации к следующему промпту, чтобы направить самокоррекцию. Повтор бесполезен, когда требуемая информация **отсутствует в источнике**. Различайте **семантические** ошибки валидации (значения не сходятся, не то поле) и **синтаксические** ошибки схемы (уже устранены использованием инструментов).
+- Навыки: повторные запросы, включающие исходный документ + неудавшееся извлечение + конкретные ошибки; добавьте `detected_pattern`, чтобы делать анализ ложных срабатываний; продумайте самокоррекцию, извлекая `calculated_total` рядом со `stated_total`; добавляйте булевы поля `conflict_detected` для несогласованных источников.
 
-## Writing explicit criteria
+## Написание явных критериев
 
-### Vague vs specific — before/after rewrites
+### Размытые против конкретных — переписки «до/после»
 
-Single most important move from prototype to production is replacing fuzzy instructions ("be careful", "only report high-confidence findings", "be conservative") with **categorical, behaviour-defining criteria**. Self-reported confidence is poorly calibrated: model wrongly confident on hard cases will not be saved by *"only report high-confidence findings"* — it will keep reporting same wrong things.
+Самый важный шаг от прототипа к продакшену — заменить нечёткие инструкции («be careful», «only report high-confidence findings», «be conservative») на **категориальные критерии, определяющие поведение**. Самооцениваемая уверенность плохо откалибрована: модель, ошибочно уверенная в сложных случаях, не будет спасена фразой *"only report high-confidence findings"* — она продолжит сообщать те же неправильные вещи.
 
-| Vague (what teams write first) | Specific (what production prompts look like) |
+| Размыто (как сначала пишут команды) | Конкретно (как выглядят production-промпты) |
 | --- | --- |
 | "Check that comments are accurate." | "Flag a comment **only** when its claimed behaviour contradicts the actual code behaviour. Do **not** flag comments that are merely vague, outdated stylistically, or under-detailed." |
 | "Find security issues." | "Report only: SQL string concatenation reaching a query call, `eval`/`exec` on attacker-controlled input, secrets in source, missing auth checks on routes under `/api/admin/*`. Skip: defensive `assert` patterns, hardcoded test fixtures, anything in `tests/`, `fixtures/`, `examples/`." |
 | "Be conservative when escalating." | "Escalate when (a) the customer asks for a policy exception, (b) the claim value > $X, or (c) more than 2 prior contacts on the same case. Resolve autonomously when the photo evidence matches a standard damage SKU and value < $X." |
 | "Only report high-confidence findings." | "Report a finding only if you can quote the exact line from the source and name the specific rule it violates. If you cannot quote a line, do not report." |
 
-Notice pattern: every "good" version answers two questions — *what counts as a positive?* and *what counts as a non-issue I must skip?* Sample Question 3 in guide makes same point in agent form: 55% first-contact resolution improves by adding **explicit escalation criteria with few-shot examples**, not self-reported confidence score.
+Обратите внимание на закономерность: каждая «хорошая» версия отвечает на два вопроса — *что считается положительным срабатыванием?* и *что считается не-проблемой, которую я обязан пропустить?* Sample Question 3 в руководстве делает ту же мысль в форме агента: показатель first-contact resolution 55% растёт за счёт добавления **явных критериев эскалации с few-shot примерами**, а не за счёт самооцениваемой шкалы уверенности.
 
-### Severity definitions with code examples
+### Определения серьёзности с примерами кода
 
-For any classifier that emits `severity` field, define each level with concrete code example *inside prompt*. Otherwise different runs collapse distinction between `low` and `medium` into noise.
+Для любого классификатора, выдающего поле `severity`, определяйте каждый уровень конкретным примером кода *внутри промпта*. Иначе разные прогоны схлопывают различие между `low` и `medium` в шум.
 
 ```xml
 <severity_definitions>
@@ -57,29 +57,29 @@ For any classifier that emits `severity` field, define each level with concrete 
 </severity_definitions>
 ```
 
-Anchoring each level to example forces consistent classification across runs and reviewers.
+Привязка каждого уровня к примеру вынуждает согласованную классификацию между запусками и между ревьюерами.
 
-### Disable-then-rebuild for high-FP categories
+### Отключи-и-перестрой для категорий с высокой долей ложных срабатываний
 
-False positives in any one category erode trust in every category. Guide recommends deliberate disable-then-rebuild pattern: when "comment accuracy" runs at 40% FP, better remove that category entirely than leave it on and degrade trust in security findings developers actually act on. Iterate bad category in side prompt until precision clears threshold, then re-enable.
+Ложные срабатывания в одной категории подрывают доверие к каждой категории. Руководство рекомендует осознанный паттерн «отключи и перестрой»: когда «точность комментариев» работает с долей ложных срабатываний 40%, лучше убрать эту категорию полностью, чем оставить её и подорвать доверие к замечаниям по безопасности, на которые разработчики реально реагируют. Дорабатывайте плохую категорию в отдельном промпте, пока точность не превысит ваш порог, затем включайте обратно.
 
-### Why "be conservative" doesn't work
+### Почему «be conservative» не работает
 
-Calibration. Adverbs like "carefully" or "only when sure" give model nothing mechanically checkable. By contrast, *"do not report a finding unless you can quote the exact source line and name the rule"* is checkable rule — model can verify it itself before emitting output.
+Калибровка. Наречия вроде «carefully» или «only when sure» не дают модели ничего, что можно механически проверить. Напротив, *"do not report a finding unless you can quote the exact source line and name the rule"* — это проверяемое правило, и модель может сама верифицировать его до выдачи ответа.
 
-## Few-shot prompting deep-dive
+## Глубокое погружение во few-shot prompting
 
-### How many examples?
+### Сколько примеров?
 
-Anthropic guidance and certification guide converge on same number: **2–4 targeted examples**. Fewer than 2 doesn't establish pattern; more than ~4 burns tokens for diminishing returns and risks over-fitting to surface features. For extended-thinking prompts, Anthropic notes multishot still helps but should show *reasoning patterns*, not just input→output pairs.
+Опубликованные рекомендации Anthropic и руководство по сертификации сходятся в одном числе: **2–4 целевых примера**. Меньше двух не задают шаблон; больше четырёх жгут токены ради убывающей отдачи и рискуют переобучить модель на поверхностные признаки примеров. Для промптов с extended thinking Anthropic отдельно отмечает, что multishot по-прежнему помогает, но должен показывать *шаблоны рассуждения*, а не просто пары ввод→вывод.
 
-### Example anatomy
+### Анатомия примера
 
-Effective examples carry three fields, not two:
+Эффективные примеры несут три поля, а не два:
 
-1. **Input** — snippet that mirrors real production input.
-2. **Reasoning** — *why* chosen action is correct over plausible alternatives.
-3. **Output** — exactly shape (XML or JSON) you want at inference time.
+1. **Ввод** — фрагмент, отражающий реальный production-ввод.
+2. **Рассуждение** — *почему* выбранное действие верно по сравнению с правдоподобными альтернативами.
+3. **Вывод** — ровно та форма (XML или JSON), которую вы хотите получать во время инференса.
 
 ```xml
 <example>
@@ -97,16 +97,16 @@ Effective examples carry three fields, not two:
 </example>
 ```
 
-### Examples for ambiguous cases, format, and FP reduction
+### Примеры для неоднозначных случаев, формата и снижения ложных срабатываний
 
-- **Ambiguous cases.** Pick 2–4 examples from eval set where model previously misbehaved, and include a **contrast pair** — example that looks similar but should be handled the **opposite** way. Contrast pairs teach generalization rather than memorization.
-- **Format consistency.** If you want every finding shaped as `{location, issue, severity, suggested_fix}`, show three findings in exactly that shape. Instructions alone leak inconsistent capitalization, missing fields, and trailing prose.
-- **False-positive reduction.** Pair an "issue" example with an "acceptable pattern" example sharing surface features. For SQL-injection reviewer, show one vulnerable concat *and* one parameterized call labelled `not_a_finding` — this stops model from flagging every `db.query(...)`.
-- **Varied document structures.** For invoices with messy line items, papers with inline vs bibliography citations, or methodology embedded in narrative, give one example *per structural variant*. Without coverage of each shape, extraction returns null on unseen formats.
+- **Неоднозначные случаи.** Возьмите 2–4 примера из вашего eval-набора, где модель ранее ошибалась, и включите **контрастную пару** — пример, который выглядит похоже, но должен быть обработан **противоположным** образом. Контрастные пары учат обобщению, а не запоминанию.
+- **Согласованность формата.** Если вы хотите, чтобы каждое замечание имело форму `{location, issue, severity, suggested_fix}`, покажите три замечания ровно в этой форме. Одни инструкции пропускают непоследовательную капитализацию, отсутствующие поля и хвостовую прозу.
+- **Снижение ложных срабатываний.** Соедините пример «проблема» с примером «приемлемого шаблона», разделяющим поверхностные признаки. Для ревьюера SQL-инъекций покажите одну уязвимую конкатенацию *и* один параметризованный вызов с меткой `not_a_finding` — так вы прекратите помечать каждый `db.query(...)`.
+- **Разные структуры документов.** Для счетов с грязными строками, статей с цитатами по тексту и в библиографии или методологии, встроенной в нарратив, давайте по одному примеру *на каждый структурный вариант*. Без покрытия каждой формы извлечение возвращает `null` на ранее не виденных форматах.
 
-### Where to place examples — XML tagging
+### Куда помещать примеры — разметка XML
 
-Anthropic prompt engineering docs are explicit: wrap examples in XML tags (`<example>`, `<examples>`, `<input>`, `<output>`) and place them **after** task instructions and criteria but **before** live input.
+Документация Anthropic по промпт-инжинирингу однозначна: оборачивайте примеры в XML-теги (`<example>`, `<examples>`, `<input>`, `<output>`) и размещайте их **после** инструкций задачи и критериев, но **до** живого ввода.
 
 ```xml
 <task>...explicit criteria here...</task>
@@ -119,11 +119,11 @@ Anthropic prompt engineering docs are explicit: wrap examples in XML tags (`<exa
 <input>{{actual_document_to_process}}</input>
 ```
 
-## Validation, retry & feedback loops
+## Валидация, повторные попытки и циклы обратной связи
 
-### Retry-with-error-feedback
+### Повторная попытка с обратной связью по ошибке
 
-Pattern: validate model output programmatically, and on failure send a *new* turn containing original input, failed output, and **specific** validation error. Generic "try again" never helps — concrete error text does.
+Шаблон таков: программно валидируйте ответ модели и при отказе шлите *новый* ход, содержащий исходный ввод, неудавшийся ответ и **конкретную** ошибку валидации. Общая «попробуй ещё раз» никогда не помогает — помогает конкретный текст ошибки.
 
 ```python
 from anthropic import Anthropic
@@ -158,18 +158,18 @@ def extract_with_retry(document: str, max_attempts: int = 2) -> dict:
     raise ExtractionError(errors, extraction)
 ```
 
-Three things make this loop work: (1) assistant turn appended *verbatim* (same rule as agentic loop in Section 2), (2) follow-up names **specific** failed fields, and (3) retry uses tool use with forced tool, so response shape stays stable across attempts.
+Три вещи делают этот цикл рабочим: (1) ход ассистента добавляется *дословно* (то же правило, что и для агентного цикла в разделе 2), (2) последующий запрос называет **конкретные** провалившиеся поля и (3) повтор использует вызов инструмента с принудительным выбором инструмента, поэтому форма ответа остаётся стабильной между попытками.
 
-### When retry will NOT help
+### Когда повтор НЕ поможет
 
-Retries fix **format and structural errors** (wrong field names, misplaced values, line items that don't sum). They do **not** fix information genuinely absent from source. If invoice PDF doesn't contain tax ID, no retry will produce one — aggressive retry loop can pressure model into hallucinating one to pass validation. Detect "absent in source" in validator and stop loop with structured null + reason instead of retrying.
+Повторы исправляют **ошибки формата и структуры** (неправильные имена полей, перепутанные значения, строки, которые не сходятся в сумму). Они **не** исправляют информацию, которая в действительности отсутствует в источнике. Если PDF счёта не содержит ИНН, никакой повтор его не выдаст — а агрессивный цикл повторов может надавить на модель и заставить её галлюцинировать значение, чтобы пройти валидацию. Определяйте «отсутствует в источнике» в валидаторе и останавливайте цикл со структурированным null плюс причиной вместо повторных попыток.
 
-### Self-correction signals in the schema
+### Сигналы самокоррекции в схеме
 
-Bake validation *into extraction itself* so model reckons with contradictions during generation:
+Встраивайте валидацию *в само извлечение*, чтобы модель сталкивалась с противоречиями уже при генерации:
 
-- **`calculated_total` alongside `stated_total`** — model emits both; validator flags discrepancies. Model often self-corrects in same response because computing calculated value forces it to inspect every line item.
-- **`conflict_detected` booleans** — for documents where two sections disagree (header date vs footer date, summary count vs item-list length), have model emit boolean per conflict family. Converts ambiguity into structured signal you can route on.
+- **`calculated_total` рядом со `stated_total`** — модель выдаёт оба; ваш валидатор флагует расхождения. Модель часто сама исправляется в том же ответе, потому что вычисление calculated-значения вынуждает её посмотреть на каждую позицию.
+- **Булевы `conflict_detected`** — для документов, где два раздела противоречат друг другу (дата в шапке против даты в подвале, число в сводке против длины списка), просите модель выдавать булево на каждую группу конфликтов. Это превращает неоднозначность в структурированный сигнал, по которому можно маршрутизировать.
 
 ```json
 {
@@ -183,41 +183,41 @@ Bake validation *into extraction itself* so model reckons with contradictions du
 }
 ```
 
-### `detected_pattern` for analyzing dismissals
+### `detected_pattern` для анализа отклонений
 
-Add `detected_pattern` (or `rule_id`) field to every finding. When developers dismiss findings in UI, group dismissals by `detected_pattern` to see which categories are noisy. Without this field, your only signal is aggregate FP rate — which tells you *that* something is wrong, not *what* to fix.
+Добавляйте поле `detected_pattern` (или `rule_id`) к каждому замечанию. Когда разработчики отклоняют замечания в вашем UI, группируйте отклонения по `detected_pattern`, чтобы видеть, какие категории шумные. Без этого поля единственный ваш сигнал — агрегированная доля ложных срабатываний, которая говорит вам, *что* что-то не так, но не *что именно* править.
 
-### Semantic vs syntax errors
+### Семантические против синтаксических ошибок
 
-Tool use with strict JSON schema (Domain 4.3) eliminates **syntax** errors — malformed JSON, missing required fields, wrong types. It does **not** eliminate **semantic** errors — values that don't sum, dates outside document range, plausible-but-wrong content. Validation-retry loop is layer that handles semantic errors. Common exam trap: "we added JSON schema, why are line items still wrong?" — because schemas don't do arithmetic.
+Использование инструментов со строгой JSON Schema (домен 4.3) устраняет **синтаксические** ошибки — невалидный JSON, отсутствующие обязательные поля, неправильные типы. Оно **не** устраняет **семантические** ошибки — значения, которые не сходятся, даты вне диапазона документа, правдоподобный, но неверный контент. Цикл валидации с повторными попытками — это слой, обрабатывающий семантические ошибки. Частая ловушка экзамена: «мы добавили JSON-схему, почему позиции всё ещё неверны?» — потому что схемы не умеют считать арифметику.
 
-## Putting it together: a precision-tuning workflow
+## Соберём вместе: рабочий процесс настройки точности
 
-1. **Baseline FP/FN per category.** Run eval set; group findings by `detected_pattern`; record precision/recall per category, not just overall.
-2. **Rewrite vague instructions as explicit criteria** for top FP categories — "report when… / skip when…" rules with code examples for each side.
-3. **Add 2–4 few-shot examples per ambiguous scenario,** including at least one **contrast pair** (looks like issue, isn't) per noisy category. Wrap in `<examples>` XML tags placed after instructions, before live input.
-4. **Wrap in validation-retry loop.** Use tool use to force schema; validate semantic constraints (`calculated_total == stated_total`, required quoted source line); on failure append specific error and retry once.
-5. **Track `detected_pattern` and dismissals.** Sort by FP rate weekly; temporarily disable any category above threshold while iterating.
-6. **Evaluate before and after each change** with Anthropic Console's [Evaluation tool](https://console.anthropic.com/docs/en/test-and-evaluate/eval-tool) or [Promptfoo](https://www.promptfoo.dev/docs/getting-started/).
+1. **Базовая доля FP/FN по категориям.** Прогоните eval-набор; сгруппируйте замечания по `detected_pattern`; запишите precision/recall по категориям, а не только в целом.
+2. **Перепишите размытые инструкции как явные критерии** для топ-категорий с ложными срабатываниями — правила «сообщать, когда… / пропускать, когда…» с примерами кода с обеих сторон.
+3. **Добавьте 2–4 few-shot примера на каждый неоднозначный сценарий,** включая хотя бы одну **контрастную пару** (выглядит как проблема, но не является ею) на каждую шумную категорию. Оборачивайте в XML-теги `<examples>`, размещённые после инструкций и до живого ввода.
+4. **Оберните в цикл валидации с повторными попытками.** Используйте вызов инструмента для принуждения схемы; валидируйте семантические ограничения (`calculated_total == stated_total`, обязательная цитируемая строка источника); при отказе добавляйте конкретную ошибку и делайте один повтор.
+5. **Отслеживайте `detected_pattern` и отклонения.** Сортируйте по доле ложных срабатываний еженедельно; временно отключайте любую категорию выше вашего порога, пока итерируете её.
+6. **Оценивайте до и после каждого изменения** с помощью [инструмента Evaluation](https://console.anthropic.com/docs/en/test-and-evaluate/eval-tool) в Anthropic Console или [Promptfoo](https://www.promptfoo.dev/docs/getting-started/).
 
-## Exam-style focus points
+## Ключевые акценты для экзамена
 
-- Given prompt that says "be conservative" or "only report high-confidence findings", recognize this is **not** right fix for high false-positive rates — categorical criteria + few-shot are.
-- Pick right number of few-shot examples: **2–4 targeted** (not 10, not 1).
-- Recognize that few-shot examples should include **reasoning** (why this action over alternatives), not just input/output, especially for ambiguous-case handling like escalation or tool selection.
-- Identify when retry will help (format/structural error, line-items-don't-sum) vs when it won't (information genuinely absent from source). Don't retry latter.
-- Distinguish **semantic** validation errors from **schema syntax** errors. Tool use fixes second; validation-retry loop fixes first.
-- Know role of self-correction fields: `calculated_total` vs `stated_total`, `conflict_detected`, `detected_pattern`.
-- For Sample Question 3 (insurance agent escalation): correct answer is **explicit escalation criteria + few-shot examples**, not self-reported confidence scores, not separate classifier model, not sentiment analysis.
+- Если в промпте написано «be conservative» или «only report high-confidence findings», узнавайте, что это **не** правильное лечение высокой доли ложных срабатываний — лечат категориальные критерии + few-shot.
+- Выбирайте правильное число few-shot примеров: **2–4 целевых** (не 10 и не 1).
+- Помните, что few-shot примеры должны включать **рассуждение** (почему именно это действие, а не альтернативы), а не только ввод/вывод, особенно для неоднозначных случаев вроде эскалации или выбора инструмента.
+- Определяйте, когда повтор поможет (ошибка формата/структуры, строки не сходятся в сумму), а когда нет (информация в действительности отсутствует в источнике). Не повторяйте второе.
+- Различайте **семантические** ошибки валидации и **синтаксические** ошибки схемы. Использование инструментов лечит вторые; цикл валидации с повтором — первые.
+- Знайте роль полей самокоррекции: `calculated_total` против `stated_total`, `conflict_detected`, `detected_pattern`.
+- Для Sample Question 3 (эскалация страхового агента): правильный ответ — **явные критерии эскалации + few-shot примеры**, а не самооцениваемая шкала уверенности, отдельная модель-классификатор или анализ тональности.
 
-## References
+## Ссылки
 
-- [Prompt engineering overview — Claude API docs](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) — canonical landing page; lists technique stack (be clear and direct → multishot → chain-of-thought → XML tags → system prompts → prefill → chain prompts) in priority order.
-- [Be clear, contextual, and specific](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/be-clear-and-direct) — Anthropic's foundational guidance behind Domain 4.1.
-- [Use examples (multishot prompting)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/multishot-prompting) — official source for 2–4 example recommendation, example anatomy, and XML wrapping.
-- [Let Claude think (chain of thought)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought) and [Use XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) — separate reasoning from output and keep examples, instructions, and live input from bleeding into each other.
-- [Extended thinking tips](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/extended-thinking-tips) — multishot still works with extended thinking; prefer high-level instructions over prescriptive step-by-step.
-- [Increase output consistency (prefill)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/increase-consistency) and [Reduce hallucinations](https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) — techniques behind "force a starting JSON brace" and "require a quoted source line".
-- [Evaluate prompts in the developer console](https://www.anthropic.com/news/evaluate-prompts) and [Using the Evaluation tool](https://console.anthropic.com/docs/en/test-and-evaluate/eval-tool) — Anthropic Workbench for test cases, side-by-side comparison, and 5-point human grading.
-- [Promptfoo getting started](https://www.promptfoo.dev/docs/getting-started/) — third-party eval framework with code-graded, model-graded, and classification evals across 60+ providers.
-- [Building effective agents — Anthropic Engineering](https://www.anthropic.com/engineering/building-effective-agents) — frames prompt engineering as simpler step before reaching for ML infrastructure (same logic behind Sample Question 3's correct answer).
+- [Обзор промпт-инжиниринга — Claude API docs](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) — каноничная посадочная страница; перечисляет стек техник (be clear and direct → multishot → chain-of-thought → XML tags → system prompts → prefill → chain prompts) в порядке приоритета.
+- [Be clear, contextual, and specific](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/be-clear-and-direct) — фундаментальные рекомендации Anthropic, стоящие за доменом 4.1.
+- [Use examples (multishot prompting)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/multishot-prompting) — официальный источник рекомендации о 2–4 примерах, анатомии примера и XML-обёртке.
+- [Let Claude think (chain of thought)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought) и [Use XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) — разделяйте рассуждение и вывод и не давайте примерам, инструкциям и живому вводу перетекать друг в друга.
+- [Extended thinking tips](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/extended-thinking-tips) — multishot всё ещё работает с extended thinking; предпочитайте инструкции высокого уровня предписывающим пошаговым.
+- [Increase output consistency (prefill)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/increase-consistency) и [Reduce hallucinations](https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) — техники, стоящие за «принудительной начальной фигурной скобкой JSON» и «требованием цитируемой строки источника».
+- [Evaluate prompts in the developer console](https://www.anthropic.com/news/evaluate-prompts) и [Using the Evaluation tool](https://console.anthropic.com/docs/en/test-and-evaluate/eval-tool) — Anthropic Workbench для тест-кейсов, сравнения бок о бок и человеческой оценки по 5-балльной шкале.
+- [Promptfoo getting started](https://www.promptfoo.dev/docs/getting-started/) — сторонний eval-фреймворк с код-оценкой, оценкой моделью и классификационными eval’ами по 60+ провайдерам.
+- [Building effective agents — Anthropic Engineering](https://www.anthropic.com/engineering/building-effective-agents) — представляет промпт-инжиниринг как более простой шаг до того, как тянуться к ML-инфраструктуре (та же логика, что и за правильным ответом Sample Question 3).

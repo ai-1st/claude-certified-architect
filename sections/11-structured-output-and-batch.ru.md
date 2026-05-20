@@ -1,43 +1,43 @@
 ---
-title: "Раздел 11 — Structured Output через tool_use, Batch Processing и Multi-Pass Review"
-linkTitle: "11. Structured Output & Batch"
+title: "Раздел 11 — Структурированный вывод через tool_use, пакетная обработка и многопроходное ревью"
+linkTitle: "11. Структурированный вывод и батч"
 weight: 11
-description: "Domains 4.3, 4.5, 4.6 — JSON Schema с nullable/optional fields, validation-retry loops и tradeoffs Message Batches API."
+description: "Домены 4.3, 4.5, 4.6 — JSON Schema с nullable/опциональными полями, циклы валидации с повторами и компромиссы Message Batches API."
 ---
 
 ## Что покрывает этот раздел
 
-Три related architectural decisions: **как** заставить Claude emit machine-parseable output (`tool_use` + JSON schemas, `strict: true`, newer Structured Outputs feature), **когда** переносить работу на **Message Batches API** for cost and throughput (and when not to), and **почему** independent reviewer или per-file + integration split beats self-review.
+Три связанных архитектурных решения: **как** заставить Claude выдавать машиночитаемый вывод (`tool_use` + JSON Schema, `strict: true`, более новая фича Structured Outputs); **когда** переносить работу на **Message Batches API** ради стоимости и пропускной способности (и когда этого не делать); и **почему** независимый ревьюер либо разделение на проход по файлу + проход интеграции лучше самопроверки.
 
-Exam tests all three with concrete scenarios — pre-merge checks versus overnight reports, single-pass versus per-file review, JSON-only prompts versus `tool_use`. Right answers come from one principle: **match technique to workload's latency, reliability, and attention-budget constraints**.
+Экзамен проверяет все три темы конкретными сценариями — проверки до merge против ночных отчётов, единый проход против прохода по файлу, промпты «только JSON» против `tool_use`. Правильные ответы вырастают из одного принципа: **подбирайте технику под ограничения нагрузки по задержке, надёжности и бюджету внимания**.
 
-## Исходный материал (из официального guide)
+## Исходный материал (из официального руководства)
 
-### 4.3 Structured output via tool_use & JSON schemas
-- `tool_use` with JSON schemas is most reliable approach for guaranteed schema-compliant output; it eliminates JSON syntax errors.
-- `tool_choice` modes: `"auto"` (model may return text), `"any"` (must call a tool, can pick which), or forced `{"type": "tool", "name": "..."}`.
-- Strict schemas eliminate **syntax** errors only — not **semantic** errors (line items not summing to total, values in wrong fields, fabricated content for missing data).
-- Schema design: required vs optional/nullable, enums with `"other"` + detail string for extensibility, `"unclear"` for ambiguity, format normalization rules in prompt.
+### 4.3 Структурированный вывод через tool_use и JSON Schema
+- `tool_use` с JSON Schema — самый надёжный подход для гарантированно соответствующего схеме вывода; он устраняет синтаксические ошибки JSON.
+- Режимы `tool_choice`: `"auto"` (модель может вернуть текст), `"any"` (обязана вызвать инструмент, может выбрать какой) или принудительный `{"type": "tool", "name": "..."}`.
+- Строгие схемы устраняют только **синтаксические** ошибки — но не **семантические** (позиции, не сходящиеся в сумму, значения не в тех полях, выдуманное содержимое вместо отсутствующих данных).
+- Дизайн схемы: обязательные против опциональных/nullable, перечисления с `"other"` + строкой-детализацией ради расширяемости, `"unclear"` для неоднозначности, правила нормализации формата в промпте.
 
-### 4.5 Batch processing strategy
-- Message Batches API: **50% cost savings**, up to **24-hour** processing window, **no latency SLA**.
-- Good for non-blocking, latency-tolerant workloads (overnight reports, weekly audits, nightly test generation). Bad for blocking workflows (pre-merge checks).
-- Per guide: Batch API does **not** support multi-turn *agentic* tool execution within a single request — you cannot pause mid-request to run a tool and feed results back.
-- `custom_id` correlates request and response; failed `custom_id`s can be resubmitted after fixes (e.g., chunking documents that exceeded context).
+### 4.5 Стратегия пакетной обработки
+- Message Batches API: **экономия 50% по стоимости**, окно обработки до **24 часов**, **без SLA по задержке**.
+- Хорошо подходит для неблокирующих, толерантных к задержке нагрузок (ночные отчёты, еженедельные аудиты, ночная генерация тестов). Плохо подходит для блокирующих процессов (проверки до merge).
+- По руководству: Batch API **не** поддерживает многоходовое *агентное* исполнение инструментов внутри одного запроса — вы не можете приостановиться посреди запроса, чтобы выполнить инструмент и подать результаты обратно.
+- `custom_id` соотносит запрос и ответ; провалившиеся `custom_id` можно переотправить после исправлений (например, разбить документы, превысившие контекст).
 
-### 4.6 Multi-instance & multi-pass review
-- A model that retains its generation reasoning is less likely to question its own decisions, so **self-review** structurally weak.
-- Independent review instances catch issues that self-review and extended thinking miss.
-- Multi-file reviews should be split into **per-file local passes** plus **cross-file integration pass** to avoid attention dilution and contradictory findings.
-- Verification passes can ask model to self-report **confidence per finding** to enable calibrated routing.
+### 4.6 Многоинстансное и многопроходное ревью
+- Модель, удерживающая своё генерационное рассуждение, реже подвергает сомнению собственные решения, поэтому **самопроверка** структурно слаба.
+- Независимые инстансы ревью ловят проблемы, которые самопроверка и extended thinking упускают.
+- Ревью многих файлов должно делиться на **локальные проходы по файлу** плюс **проход интеграции по файлам**, чтобы избежать размывания внимания и противоречивых замечаний.
+- Проходы верификации могут просить модель самостоятельно сообщать **уверенность на каждое замечание**, чтобы включить калиброванную маршрутизацию.
 
-## Structured output with tool_use
+## Структурированный вывод через tool_use
 
-### Why tool_use beats "respond with JSON only"
+### Почему tool_use лучше «отвечай только JSON»
 
-Asking model to "respond with JSON only" works most of the time and fails just often enough to be production hazard: stray prose, smart quotes, trailing commas, markdown fences, apologetic preamble. `tool_use` removes that entire class of failures — model isn't emitting free-form text, it's emitting structured `tool_use` block whose `input` is guaranteed to be JSON object.
+Просьба к модели «ответить только JSON» работает большую часть времени и падает достаточно часто, чтобы быть продакшен-опасностью: случайная проза, «умные» кавычки, висячие запятые, markdown-ограждения, извиняющиеся преамбулы. `tool_use` убирает весь этот класс отказов — модель не выдаёт свободный текст, она выдаёт структурированный блок `tool_use`, чьё поле `input` гарантированно является JSON-объектом.
 
-Adding `"strict": true` (grammar-constrained sampling) further guarantees JSON conforms to schema types, enums, and required fields. Strict mode is supported on Opus 4.7/4.6/4.5, Sonnet 4.6/4.5, and Haiku 4.5 ([Strict tool use](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/strict-tool-use)). Newer **Structured Outputs** feature (`output_config.format = { "type": "json_schema", "schema": ... }`) delivers same guarantee without defining fake tool ([Structured outputs](https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs)); both share same JSON Schema subset and semantic-error caveat.
+Добавление `"strict": true` (сэмплирование, ограниченное грамматикой) дополнительно гарантирует, что JSON соответствует типам, перечислениям и обязательным полям схемы. Строгий режим поддерживается на Opus 4.7/4.6/4.5, Sonnet 4.6/4.5 и Haiku 4.5 ([Strict tool use](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/strict-tool-use)). Более новая фича **Structured Outputs** (`output_config.format = { "type": "json_schema", "schema": ... }`) даёт ту же гарантию без определения фиктивного инструмента ([Structured outputs](https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs)); обе используют один и тот же подмножество JSON Schema и одну и ту же оговорку о семантических ошибках.
 
 ```python
 import anthropic
@@ -90,80 +90,80 @@ resp = client.messages.create(
 data = next(b.input for b in resp.content if b.type == "tool_use")
 ```
 
-### tool_choice cheat-sheet
+### Шпаргалка по tool_choice
 
-| `tool_choice`                          | Model behavior                                         | Use when                                                    |
+| `tool_choice`                          | Поведение модели                                       | Когда использовать                                          |
 | -------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
-| `{"type": "auto"}`                     | May respond with text *or* call any tool               | Agent loops where text answers are valid                    |
-| `{"type": "any"}`                      | **Must** call a tool; picks which                      | Multi-schema extraction where the document type is unknown  |
-| `{"type": "tool", "name": "extract"}`  | **Must** call that specific tool                       | Force a known extraction step before enrichment             |
-| `{"type": "none"}`                     | Cannot call any tool                                   | Disable tools for a turn without rebuilding the request     |
+| `{"type": "auto"}`                     | Может ответить текстом *или* вызвать любой инструмент  | Агентные циклы, где текстовые ответы допустимы              |
+| `{"type": "any"}`                      | **Обязана** вызвать инструмент; выбирает какой         | Извлечение по нескольким схемам, когда тип документа неизвестен |
+| `{"type": "tool", "name": "extract"}`  | **Обязана** вызвать именно этот инструмент             | Принудить известный шаг извлечения до обогащения             |
+| `{"type": "none"}`                     | Не может вызвать ни один инструмент                    | Выключить инструменты на ход без перестройки запроса         |
 
-Pair any with `"disable_parallel_tool_use": true` if you need at most one tool call per turn — useful when downstream code expects single structured payload, or when concurrent tool calls would violate ordering invariants ([Parallel tool use](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/parallel-tool-use)).
+Сочетайте любой из вариантов с `"disable_parallel_tool_use": true`, если вам нужен не более чем один вызов инструмента за ход — полезно, когда нижестоящий код ожидает один структурированный payload или когда параллельные вызовы инструментов нарушали бы инварианты порядка ([Parallel tool use](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/parallel-tool-use)).
 
-### Schema design patterns
+### Паттерны дизайна схем
 
-- **Required vs optional / nullable.** Required fields force model to fill them, causing fabrication when source genuinely lacks data. Mark optionally-present fields as `"type": ["string", "null"]` so model can return `null` instead of hallucinating.
-- **Enum with `"other"` + detail.** Closed enums are brittle. `category` enum `[..., "other"]` + sibling `category_other: string` preserves information for new categories without breaking downstream code.
-- **`"unclear"` for ambiguity.** `"unclear"` enum value lets model signal low confidence; route those rows to human review.
-- **Self-validating fields.** Emit both `stated_total` (from document) and `calculated_total` (summed from `line_items`); post-processing check catches semantic errors strict schemas cannot.
+- **Обязательные против опциональных / nullable.** Обязательные поля принуждают модель их заполнять, провоцируя выдумывание, когда источник в действительности не содержит данных. Помечайте опционально присутствующие поля как `"type": ["string", "null"]`, чтобы модель возвращала `null` вместо галлюцинаций.
+- **Перечисление с `"other"` + детализацией.** Закрытые перечисления хрупки. Перечисление `category` `[..., "other"]` + соседнее `category_other: string` сохраняет информацию для новых категорий, не ломая нижестоящий код.
+- **`"unclear"` для неоднозначности.** Значение перечисления `"unclear"` позволяет модели сигнализировать о низкой уверенности; маршрутизируйте такие строки на человеческое ревью.
+- **Самовалидирующиеся поля.** Выдавайте одновременно `stated_total` (из документа) и `calculated_total` (сумма из `line_items`); постобработочная проверка ловит семантические ошибки, которые строгие схемы поймать не могут.
 
-### Supported JSON Schema subset
+### Поддерживаемое подмножество JSON Schema
 
-Strict-mode / structured-outputs compiler accepts subset of JSON Schema. Most "why does my schema 400?" failures come from this list:
+Компилятор strict-режима / Structured Outputs принимает подмножество JSON Schema. Большинство отказов «почему моя схема даёт 400?» приходятся на этот список:
 
-- **Supported:** object/array/string/integer/number/boolean/null, `enum` (primitives only), `const`, `anyOf`/`allOf` (limited), internal `$ref`/`$def`, `default`, `required`, `additionalProperties: false`, formats (`date-time`, `date`, `email`, `uri`, `uuid`, …), `minItems` of 0 or 1.
-- **Not supported:** external `$ref`, recursive schemas, complex types in enums, numeric constraints (`minimum`/`maximum`/`multipleOf`), string length constraints, `additionalProperties` != `false`.
-- **Regex:** quantifiers, character classes, and groups work; backreferences, lookarounds, and word boundaries do not.
+- **Поддерживается:** object/array/string/integer/number/boolean/null, `enum` (только примитивы), `const`, `anyOf`/`allOf` (ограниченно), внутренние `$ref`/`$def`, `default`, `required`, `additionalProperties: false`, форматы (`date-time`, `date`, `email`, `uri`, `uuid`, …), `minItems` равное 0 или 1.
+- **Не поддерживается:** внешние `$ref`, рекурсивные схемы, сложные типы в перечислениях, числовые ограничения (`minimum`/`maximum`/`multipleOf`), ограничения длины строки, `additionalProperties` != `false`.
+- **Регулярные выражения:** квантификаторы, классы символов и группы работают; обратные ссылки, lookaround и границы слов — нет.
 
-### What tool_use does NOT solve
+### Что tool_use НЕ решает
 
-Strict schemas guarantee *parseability*, not *correctness*. They will happily emit schema-valid invoice where line items sum to $812 while `stated_total` says $1,200, or where vendor name appears in `invoice_number`. Catching these requires application-level validation (e.g., `calculated_total` trick above), retry-with-error-feedback loops (Domain 4.4), or independent reviewer pass (Domain 4.6).
+Строгие схемы гарантируют *парсимость*, но не *корректность*. Они с радостью выдадут валидный по схеме счёт, где позиции суммируются в $812, а `stated_total` указан как $1 200, или где имя поставщика оказывается в `invoice_number`. Чтобы это ловить, нужны валидация на уровне приложения (например, трюк с `calculated_total` выше), циклы повторных попыток с обратной связью по ошибке (домен 4.4) или проход независимого ревьюера (домен 4.6).
 
 ## Message Batches API
 
-### What you get / what you give up
+### Что вы получаете и от чего отказываетесь
 
-| Dimension                  | Synchronous Messages API           | Message Batches API                                          |
+| Измерение                  | Синхронный Messages API            | Message Batches API                                          |
 | -------------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| Pricing                    | Standard                           | **50% off** input + output (e.g., Sonnet 4.6 $1.50/$7.50 per MTok) |
-| Latency                    | Seconds                            | Up to **24 hours**; most batches finish within 1 hour; no SLA |
-| Max requests / batch       | n/a                                | **100,000** requests **or 256 MB**, whichever is first       |
-| Tool use                   | Full agentic loop                  | Tools may be defined; **multi-turn tool execution mid-request is not supported** |
-| Streaming                  | Yes                                | **Not supported** (results are pulled when the batch ends)   |
-| Prompt caching             | Yes                                | Yes (best-effort; pair with 1-hour cache for shared context) |
-| Result retention           | n/a                                | 29 days                                                      |
-| Models                     | All active                         | All active models                                            |
+| Тарификация                | Стандартная                        | **−50%** на ввод + вывод (например, Sonnet 4.6 $1.50/$7.50 за MTok) |
+| Задержка                   | Секунды                            | До **24 часов**; большинство батчей завершается за час; SLA нет |
+| Максимум запросов / батч   | н/д                                | **100 000** запросов **или 256 МБ**, что наступит раньше       |
+| Использование инструментов | Полный агентный цикл               | Инструменты могут быть определены; **многоходовое исполнение инструментов посреди запроса не поддерживается** |
+| Стриминг                   | Да                                 | **Не поддерживается** (результаты забираются по завершении батча) |
+| Prompt caching             | Да                                 | Да (по принципу best-effort; сочетайте с часовым кэшем для общего контекста) |
+| Срок хранения результатов  | н/д                                | 29 дней                                                       |
+| Модели                     | Все активные                       | Все активные модели                                          |
 
-Sources: [Batch processing](https://docs.anthropic.com/en/docs/build-with-claude/message-batches).
+Источники: [Batch processing](https://docs.anthropic.com/en/docs/build-with-claude/message-batches).
 
-### When to use / when not to
+### Когда использовать и когда нет
 
-**Use the Batches API when:**
+**Используйте Message Batches API, когда:**
 
-- Workload is non-blocking — nightly technical-debt reports, weekly audits, regression test generation, content moderation backlogs, bulk evaluations.
-- Volumes are large enough that 50% discount materially matters.
-- Each request is **self-contained** (no need to inject tool results between turns).
+- Нагрузка неблокирующая — ночные отчёты о техдолге, еженедельные аудиты, генерация регрессионных тестов, очереди модерации контента, массовые оценки.
+- Объёмы достаточно велики, чтобы скидка 50% существенно влияла.
+- Каждый запрос **самодостаточен** (нет необходимости подставлять результаты инструментов между ходами).
 
-**Do not use it when:**
+**Не используйте его, когда:**
 
-- Human is waiting for result (pre-merge checks, chat, interactive UIs).
-- Workflow needs model to call tools, see results, then continue reasoning in same request.
-- You need streaming or sub-minute latency.
+- Человек ждёт результат (проверки до merge, чат, интерактивные интерфейсы).
+- Процессу нужно, чтобы модель вызвала инструменты, увидела результаты и продолжала рассуждать в том же запросе.
+- Вам нужен стриминг или задержка ниже минуты.
 
-This is exactly structure of **Sample Question 11**: switch overnight technical-debt report to batch (A), keep blocking pre-merge check on synchronous API. Wrong answers all involve hoping batches "usually finish fast enough" or adding timeout fallback — neither acceptable when SLA is "developer is staring at the screen."
+Это в точности структура **Sample Question 11**: переведите ночной отчёт о техдолге на батч (A), оставьте блокирующую проверку до merge на синхронном API. Все неправильные ответы предлагают надеяться, что батчи «обычно успевают», или добавлять fallback по тайм-ауту — ни одно из этого не приемлемо, когда SLA — «разработчик смотрит в экран».
 
-### custom_id and failure handling
+### custom_id и обработка ошибок
 
-Every request in batch carries `custom_id` (1–64 chars, `[a-zA-Z0-9_-]`). It is **only** mechanism for correlating results to inputs, since output order is not guaranteed. Embed enough metadata in `custom_id` to look original record up — `doc_42891-v3-2026q1` is fine; `req_001` will haunt you.
+Каждый запрос в батче несёт `custom_id` (1–64 символа, `[a-zA-Z0-9_-]`). Это **единственный** механизм соотнесения результатов с вводами, потому что порядок вывода не гарантирован. Закладывайте в `custom_id` достаточно метаданных, чтобы поднять исходную запись — `doc_42891-v3-2026q1` подойдёт, а `req_001` будет вас преследовать.
 
-When retrieving results, each entry has `result` of `succeeded`, `errored`, `canceled`, or `expired`. Standard failure pattern:
+При получении результатов у каждой записи есть `result` со значением `succeeded`, `errored`, `canceled` или `expired`. Стандартный паттерн обработки отказов:
 
-1. Pull results stream and partition by `result.type`.
-2. For `errored` entries, inspect error code: chunk oversized documents, fix invalid params, then resubmit **only failed `custom_id`s** as new smaller batch.
-3. For `expired` entries (batch did not finish within 24h), resubmit at lower batch size or off-peak.
+1. Подтяните поток результатов и разделите по `result.type`.
+2. Для записей с `errored` посмотрите код ошибки: разбейте слишком большие документы, исправьте невалидные параметры, затем переотправьте **только провалившиеся `custom_id`** новым меньшим батчем.
+3. Для записей с `expired` (батч не завершился за 24 часа) переотправьте меньшим размером батча или в часы низкой нагрузки.
 
-### Worked example: 100-document overnight extraction
+### Разобранный пример: ночное извлечение из 100 документов
 
 ```python
 from anthropic import Anthropic
@@ -203,23 +203,23 @@ for entry in client.messages.batches.results(batch.id):
         log_failure(entry.custom_id, entry.result)
 ```
 
-Note combination: `tool_use` for schema-safe output **inside** batch request. Single-shot extraction has no mid-request tool calls, so Batch API constraint doesn't bite.
+Обратите внимание на сочетание: `tool_use` для безопасного по схеме вывода **внутри** батчевого запроса. У одноразового извлечения нет вызовов инструментов посреди запроса, поэтому ограничение Batch API не кусается.
 
-### SLA math: how often to submit
+### Математика SLA: с какой частотой отправлять
 
-If business SLA is "results within N hours" and Batch API can take up to 24 hours, submit on cadence such that **submission delay + 24h processing ≤ N**. For N = 30h SLA, submit every **4 hours** (worst-case wait 4h before next batch picks record up, plus 24h processing = 28h, comfortably inside 30h). For 26h SLA, every hour. For 24h SLA, you cannot meet it with Batches API alone — fall back to synchronous calls or accept missed SLAs.
+Если бизнес-SLA — «результаты в течение N часов», а Batch API может занять до 24 часов, отправляйте с частотой такой, что **задержка отправки + 24 часа обработки ≤ N**. Для SLA N = 30 ч отправляйте каждые **4 часа** (в худшем случае запись 4 часа ждёт, пока следующий батч её подхватит, плюс 24 часа обработки = 28 часов, комфортно укладывается в 30). Для SLA 26 ч — каждый час. Для SLA 24 ч одним только Message Batches API уложиться нельзя — переходите на синхронные вызовы или соглашайтесь на пропуски SLA.
 
-## Multi-instance & multi-pass review architecture
+## Архитектура многоинстансного и многопроходного ревью
 
-### The self-review trap
+### Ловушка самопроверки
 
-When same Claude instance that wrote code also reviews it, generation reasoning is still in context — model treats earlier choices as premises rather than hypotheses to challenge. Even explicit "critique your previous response" instruction is weaker than **fresh instance** with no prior commitment to defend.
+Когда тот же инстанс Claude, что написал код, его же и ревьюит, генерационное рассуждение всё ещё в контексте — модель воспринимает свои предыдущие выборы как посылки, а не как гипотезы, которые надо подвергнуть сомнению. Даже явная инструкция «критикуй свой предыдущий ответ» слабее, чем **свежий инстанс** без прежних обязательств, которые ему пришлось бы защищать.
 
-Anthropic's own Code Review system reflects this: it dispatches **multiple specialized agents in parallel** (distinct prompts for logic, security, edge cases) and runs **verification step** against actual code behavior to filter false positives before posting findings ([Claude Code Code Review](https://claude.com/blog/code-review)). Split work, use independent context, reconcile at end.
+Собственная система Code Review от Anthropic это отражает: она запускает **несколько специализированных агентов параллельно** (разные промпты для логики, безопасности, граничных случаев) и проводит **шаг верификации** против реального поведения кода, чтобы отфильтровать ложные срабатывания до публикации замечаний ([Claude Code Code Review](https://claude.com/blog/code-review)). Разделите работу, используйте независимый контекст, сводите результаты в конце.
 
-### Per-file + cross-file integration pattern
+### Паттерн «проход по файлу + проход интеграции»
 
-This is correct answer to **Sample Question 12** (14-file PR with inconsistent depth and contradictory findings):
+Это правильный ответ на **Sample Question 12** (PR из 14 файлов с непоследовательной глубиной и противоречивыми замечаниями):
 
 ```
                     ┌────────────────────────────┐
@@ -241,20 +241,20 @@ PR (14 files) ──►  │  - one Claude call per file │  ──► findings
                           dedupe + rank + post
 ```
 
-Per-file passes give every file **same attention budget**, eliminating "deep on file 1, superficial on file 14" failure mode. Integration pass is specifically prompted for cross-file concerns (caller/callee signature drift, shared schema changes, transactional invariants) so it doesn't redo what local passes already did.
+Проходы по файлу дают каждому файлу **одинаковый бюджет внимания**, устраняя режим отказа «глубоко на файле 1, поверхностно на файле 14». Проход интеграции специально промптится под межфайловые темы (дрейф сигнатур вызывающего/вызываемого, изменения общих схем, транзакционные инварианты), чтобы не повторять то, что локальные проходы уже сделали.
 
-### Independent reviewer pattern
+### Паттерн независимого ревьюера
 
-For high-stakes single artifacts (generated migration, customer-facing report), run **two Claude calls**:
+Для критичных одиночных артефактов (сгенерированная миграция, отчёт для клиента) делайте **два вызова Claude**:
 
-1. **Generator** — produces artifact with full reasoning.
-2. **Reviewer** — *new* request, *new* system prompt, *no* generator transcript, given only artifact and spec. Its only job is to find defects.
+1. **Генератор** — производит артефакт с полным рассуждением.
+2. **Ревьюер** — *новый* запрос, *новый* системный промпт, *без* транскрипта генератора, получает только артефакт и спецификацию. Его единственная задача — находить дефекты.
 
-Reviewer's lack of context is feature, not bug — it cannot rationalize away decisions it never made.
+Отсутствие контекста у ревьюера — это фича, а не баг: он не может рационализировать решения, которые сам не принимал.
 
-### Confidence-annotated verification passes
+### Проходы верификации с аннотацией уверенности
 
-Have reviewer return findings with explicit `confidence` enum (`"high"`, `"medium"`, `"low"`) and one-line `rationale`:
+Пусть ревьюер возвращает замечания с явным перечислением `confidence` (`"high"`, `"medium"`, `"low"`) и однострочным `rationale`:
 
 ```json
 {
@@ -267,30 +267,30 @@ Have reviewer return findings with explicit `confidence` enum (`"high"`, `"mediu
 }
 ```
 
-Then route by confidence: `high` confidence + `high` severity goes straight into PR as blocking comment; `low` confidence findings go to triage queue or trigger tie-breaker pass. This is **calibrated review routing** official skill references.
+Затем маршрутизируйте по уверенности: `high` confidence + `high` severity идёт прямо в PR как блокирующий комментарий; замечания с `low` confidence уходят в очередь triage или запускают проход-арбитр. Это и есть **калиброванная маршрутизация ревью**, на которую ссылается официальный навык.
 
-## Decision matrix: which technique for which job
+## Матрица решений: какая техника под какую задачу
 
-| Workload                                | Latency need   | Review depth           | Recommended stack                                                       |
-| --------------------------------------- | -------------- | ---------------------- | ----------------------------------------------------------------------- |
-| Blocking pre-merge check                | Seconds        | Per-file + integration | Sync Messages API + `tool_use(strict)` + multi-pass review              |
-| Overnight technical-debt report         | Hours          | Per-file + integration | **Batches API** + `tool_use(strict)` + multi-pass review                |
-| 100k document field extraction          | Overnight      | Sample QC only         | **Batches API** + forced `tool_choice` + self-validating fields         |
-| Interactive chat with extraction step   | Seconds        | None                   | Sync Messages API + forced `tool_choice` + nullable fields              |
-| Regulatory document QC                  | Minutes–hours  | Independent reviewer   | Sync (or batch) + generator/reviewer split + confidence routing         |
-| Weekly cross-repo audit                 | Days           | Per-repo only          | **Batches API** + `tool_use` + skip integration pass                    |
+| Нагрузка                                  | Требование к задержке | Глубина ревью          | Рекомендуемый стек                                                       |
+| ----------------------------------------- | --------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| Блокирующая проверка до merge             | Секунды               | Проход по файлу + интеграция | Синхронный Messages API + `tool_use(strict)` + многопроходное ревью |
+| Ночной отчёт о техдолге                   | Часы                  | Проход по файлу + интеграция | **Message Batches API** + `tool_use(strict)` + многопроходное ревью |
+| Извлечение полей из 100 тыс. документов   | За ночь               | Только выборочный QC   | **Message Batches API** + принудительный `tool_choice` + самовалидирующиеся поля |
+| Интерактивный чат с шагом извлечения      | Секунды               | Нет                    | Синхронный Messages API + принудительный `tool_choice` + nullable-поля    |
+| QC регулирующих документов                | Минуты–часы           | Независимый ревьюер    | Синхронно (или батч) + разделение генератор/ревьюер + маршрутизация по уверенности |
+| Еженедельный кроссрепозиторный аудит      | Дни                   | Только по репозиторию  | **Message Batches API** + `tool_use` + пропустить проход интеграции       |
 
-## Exam-style focus points
+## Ключевые акценты для экзамена
 
-- **`tool_use` vs "respond with JSON":** right answer always pushes toward `tool_use` / strict schemas for guaranteed parseability. Bare-JSON prompts are distractor.
-- **`tool_choice` selection:** `"any"` for unknown document type across multiple extraction tools; forced `{"type":"tool","name":"..."}` to guarantee specific tool runs before enrichment; `"auto"` only when text answers legitimate.
-- **Schema design:** nullable when source may lack data (prevents fabrication); `"other"` + detail for extensibility; `"unclear"` for ambiguity; self-validating fields for semantic checks.
-- **Batches API fit:** **non-blocking, latency-tolerant, ≤24h** workloads only. Pre-merge checks are canonical wrong fit. 50% off, 100k req / 256 MB cap, results valid 29 days, no streaming, no mid-request tool execution.
-- **`custom_id`:** mandatory for correlation; resubmit only failed IDs after fixing underlying issue.
-- **Multi-pass review:** per-file local + cross-file integration beats single-pass on multi-file PRs; independent instances beat self-review; confidence-annotated findings enable routing.
-- **Misconceptions to avoid:** "bigger context window fixes attention dilution" (no), "three full passes + majority vote" (suppresses real bugs caught intermittently), "timeout-fallback from batch to sync" (over-complex; pick right API per workload).
+- **`tool_use` против «отвечай JSON»:** правильный ответ всегда тяготеет к `tool_use` / строгим схемам ради гарантированной парсимости. Промпты «голый JSON» — отвлекающий вариант.
+- **Выбор `tool_choice`:** `"any"` для неизвестного типа документа среди нескольких инструментов извлечения; принудительный `{"type":"tool","name":"..."}` чтобы гарантировать запуск конкретного инструмента до обогащения; `"auto"` — только когда текстовые ответы допустимы.
+- **Дизайн схемы:** nullable, когда источник может не содержать данных (предотвращает выдумывание); `"other"` + детализация для расширяемости; `"unclear"` для неоднозначности; самовалидирующиеся поля для семантических проверок.
+- **Соответствие Message Batches API:** только **неблокирующие, толерантные к задержке, ≤24 часа** нагрузки. Проверки до merge — каноничный неподходящий случай. −50%, лимит 100 тыс. запросов / 256 МБ, результаты валидны 29 дней, без стриминга, без исполнения инструментов посреди запроса.
+- **`custom_id`:** обязателен для соотнесения; переотправляйте только провалившиеся идентификаторы после исправления первопричины.
+- **Многопроходное ревью:** проход по файлу + проход интеграции по файлам лучше единого прохода на многофайловых PR; независимые инстансы лучше самопроверки; замечания с аннотацией уверенности позволяют маршрутизацию.
+- **Заблуждения, которых надо избегать:** «большее контекстное окно решает размывание внимания» (нет), «три полных прохода + голосование большинством» (заглушают реальные баги, ловимые лишь иногда), «fallback по тайм-ауту с батча на синхрон» (переусложнённо; подбирайте правильный API под нагрузку).
 
-## References
+## Ссылки
 
 - [Tool use overview](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview)
 - [Define tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/define-tools)
@@ -298,7 +298,7 @@ Then route by confidence: `high` confidence + `high` severity goes straight into
 - [Parallel tool use & `disable_parallel_tool_use`](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/parallel-tool-use)
 - [Structured outputs (`output_config.format` JSON Schema)](https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs)
 - [Message Batches API — batch processing](https://docs.anthropic.com/en/docs/build-with-claude/message-batches)
-- [Create / list / retrieve Message Batches (API reference)](https://docs.anthropic.com/en/api/creating-message-batches)
-- [Prompt caching with batches (1-hour cache duration)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
-- [Claude Code: multi-agent Code Review system](https://claude.com/blog/code-review)
-- [Claude Code Code Review docs](https://docs.anthropic.com/en/docs/claude-code/code-review)
+- [Create / list / retrieve Message Batches (справочник API)](https://docs.anthropic.com/en/api/creating-message-batches)
+- [Prompt caching с батчами (часовая длительность кэша)](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+- [Claude Code: многоагентная система Code Review](https://claude.com/blog/code-review)
+- [Документация Claude Code Code Review](https://docs.anthropic.com/en/docs/claude-code/code-review)
