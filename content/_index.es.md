@@ -26,7 +26,7 @@ toc: false
 <div class="hx:mt-8 hx:flex hx:flex-wrap hx:items-center hx:justify-center hx:gap-2">
   <span class="hx:text-sm hx:font-semibold hx:opacity-70 hx:mr-2">Lee esta guía en:</span>
   <a href="/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">English</a>
-  <a href="/es/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:bg-primary-600 hx:text-white hx:font-medium hx:no-underline hx:transition hx:hover:opacity-90">Español</a>
+  <a href="/es/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:bg-neutral-900 hx:text-white hx:dark:bg-white hx:dark:text-neutral-900 hx:font-semibold hx:no-underline hx:transition hx:hover:opacity-90">Español</a>
   <a href="/fr/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">Français</a>
   <a href="/ru/" class="hx:inline-flex hx:items-center hx:px-4 hx:py-1.5 hx:rounded-full hx:border hx:border-gray-300 hx:dark:border-neutral-700 hx:text-current hx:no-underline hx:transition hx:hover:bg-gray-100 hx:dark:hover:bg-neutral-800">Русский</a>
 </div>
