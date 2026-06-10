@@ -83,6 +83,17 @@ menu:
       weight: 3
       params:
         icon: github
+    # Hextra renders the navbar search box and theme toggle only as
+    # menu entries of the given type; without these the desktop navbar
+    # has no search input (search still works, index is generated).
+    - name: Search
+      weight: 4
+      params:
+        type: search
+    - name: Theme
+      weight: 5
+      params:
+        type: theme-toggle
 
 # Hextra-specific params
 params:
